@@ -1,0 +1,76 @@
+{
+  "year": 2026,
+  "calendar": "gregorian",
+  "note": "All dates are approximate and subject to moon sighting",
+  "religious_occasions": [
+    {
+      "name_ar": "الإسراء والمعراج",
+      "name_en": "Al-Isra and Al-Mi'raj",
+      "date": "2026-01-16",
+      "hijri": "27 رجب 1447 هـ"
+    },
+    {
+      "name_ar": "ليلة النصف من شعبان",
+      "name_en": "Mid of Sha'ban",
+      "date": "2026-02-03",
+      "hijri": "15 شعبان 1447 هـ"
+    },
+    {
+      "name_ar": "بداية شهر رمضان",
+      "name_en": "Start of Ramadan",
+      "date": "2026-02-18",
+      "hijri": "1 رمضان 1447 هـ"
+    },
+    {
+      "name_ar": "ليلة القدر (الأرجح)",
+      "name_en": "Laylat Al-Qadr",
+      "date": "2026-03-17",
+      "hijri": "27 رمضان 1447 هـ"
+    },
+    {
+      "name_ar": "عيد الفطر السعيد",
+      "name_en": "Eid Al-Fitr",
+      "date": "2026-03-20",
+      "hijri": "1 شوال 1447 هـ"
+    },
+    {
+      "name_ar": "يوم عرفة",
+      "name_en": "Day of Arafah",
+      "date": "2026-05-26",
+      "hijri": "9 ذو الحجة 1447 هـ"
+    },
+    {
+      "name_ar": "عيد الأضحى المبارك",
+      "name_en": "Eid Al-Adha",
+      "date": "2026-05-27",
+      "hijri": "10 ذو الحجة 1447 هـ"
+    },
+    {
+      "name_ar": "أيام التشريق",
+      "name_en": "Tashreeq Days",
+      "date_range": {
+        "from": "2026-05-28",
+        "to": "2026-05-30"
+      },
+      "hijri": "11–13 ذو الحجة 1447 هـ"
+    },
+    {
+      "name_ar": "رأس السنة الهجرية",
+      "name_en": "Hijri New Year",
+      "date": "2026-06-16",
+      "hijri": "1 محرم 1448 هـ"
+    },
+    {
+      "name_ar": "يوم عاشوراء",
+      "name_en": "Ashura",
+      "date": "2026-06-25",
+      "hijri": "10 محرم 1448 هـ"
+    },
+    {
+      "name_ar": "المولد النبوي الشريف",
+      "name_en": "Prophet Muhammad's Birthday",
+      "date": "2026-08-25",
+      "hijri": "12 ربيع الأول 1448 هـ"
+    }
+  ]
+}
