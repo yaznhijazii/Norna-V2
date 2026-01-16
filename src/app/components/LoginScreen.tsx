@@ -95,11 +95,25 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
   };
 
   return (
-    <div className="min-h-screen relative flex items-center justify-center p-4 overflow-hidden bg-[#0a0a0c]" dir="rtl">
-      {/* Dynamic Mesh Background */}
+    <div className="min-h-screen relative flex items-center justify-center p-6 overflow-hidden bg-[#F8FAFC]" dir="rtl">
+      {/* Soft Premium Mesh Background */}
       <div className="absolute inset-0 z-0">
-        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-indigo-500/10 rounded-full blur-[120px] animate-pulse" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-rose-500/10 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: '2s' }} />
+        <motion.div
+          animate={{
+            scale: [1, 1.2, 1],
+            opacity: [0.3, 0.5, 0.3],
+          }}
+          transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+          className="absolute top-[-10%] right-[-5%] w-[60%] h-[60%] bg-emerald-100 rounded-full blur-[100px]"
+        />
+        <motion.div
+          animate={{
+            scale: [1.2, 1, 1.2],
+            opacity: [0.2, 0.4, 0.2],
+          }}
+          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+          className="absolute bottom-[-10%] left-[-5%] w-[60%] h-[60%] bg-indigo-100 rounded-full blur-[100px]"
+        />
       </div>
 
       <motion.div
@@ -109,98 +123,102 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
       >
         <div className="text-center mb-10">
           <motion.div
-            initial={{ scale: 0.8, rotate: -10 }}
-            animate={{ scale: 1, rotate: 0 }}
-            className="inline-block relative"
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="inline-block relative mb-6"
           >
-            <div className="absolute inset-0 bg-white/20 blur-2xl rounded-full" />
+            <div className="absolute inset-0 bg-white/40 blur-3xl rounded-full" />
             <img
               src={logoImage}
               alt="نورنا"
-              className="w-24 h-24 rounded-[2rem] shadow-2xl relative z-10 border border-white/20"
+              className="w-20 h-20 rounded-[1.8rem] shadow-2xl relative z-10 border border-white"
             />
           </motion.div>
 
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.2 }}
-            className="mt-6"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
           >
-            <h1 className="text-4xl font-black text-white tracking-tight flex items-center justify-center gap-2">
+            <h1 className="text-4xl font-black text-[#0F172A] tracking-tighter mb-1">
               نورنا
             </h1>
-            <p className="text-slate-400 font-bold mt-2 uppercase tracking-[0.2em] text-[10px]">حب يضيء بالإيمان</p>
+            <p className="text-[#64748B] font-bold text-[10px] uppercase tracking-[0.4em]">حب يضيء بالإيمان</p>
           </motion.div>
         </div>
 
-        <div className="bg-white/[0.03] backdrop-blur-2xl border border-white/10 rounded-[2.5rem] p-8 shadow-2xl overflow-hidden relative group">
-          {/* Subtle Shine Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-tr from-white/[0.02] to-transparent pointer-events-none" />
+        <div className="bg-white rounded-[3rem] p-10 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.1)] border border-white relative overflow-hidden">
+          {/* Internal Glow */}
+          <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-50/50 blur-3xl rounded-full" />
 
-          {/* Mode Switcher */}
-          <div className="flex bg-black/40 p-1.5 rounded-2xl mb-8 border border-white/5">
+          {/* Mode Switcher - Pill Style */}
+          <div className="flex bg-[#F1F5F9] p-1.5 rounded-[1.5rem] mb-10 relative">
+            <div
+              className={`absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] bg-white rounded-[1.2rem] shadow-sm transition-transform duration-500 ease-out
+                ${mode === "signup" ? "translate-x-[-100%]" : "translate-x-0"}`}
+            />
             <button
               onClick={() => setMode("login")}
-              className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl font-black text-xs transition-all duration-500
-                ${mode === "login" ? "bg-white text-black shadow-xl scale-[1.02]" : "text-white/40 hover:text-white/60"}`}
+              type="button"
+              className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl font-black text-xs transition-all duration-300 relative z-10
+                ${mode === "login" ? "text-[#0F172A]" : "text-slate-400"}`}
             >
-              <LogIn className="w-3.5 h-3.5" />
+              <LogIn className={`w-3.5 h-3.5 transition-colors ${mode === "login" ? "text-indigo-500" : "text-slate-300"}`} />
               تسجيل الدخول
             </button>
             <button
               onClick={() => setMode("signup")}
-              className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl font-black text-xs transition-all duration-500
-                ${mode === "signup" ? "bg-white text-black shadow-xl scale-[1.02]" : "text-white/40 hover:text-white/60"}`}
+              type="button"
+              className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl font-black text-xs transition-all duration-300 relative z-10
+                ${mode === "signup" ? "text-[#0F172A]" : "text-slate-400"}`}
             >
-              <UserPlus className="w-3.5 h-3.5" />
-              حساب جديد
+              <UserPlus className={`w-3.5 h-3.5 transition-colors ${mode === "signup" ? "text-emerald-500" : "text-slate-300"}`} />
+              إنشاء حساب
             </button>
           </div>
 
-          <form onSubmit={mode === "login" ? handleLogin : handleSignup} className="space-y-6">
+          <form onSubmit={mode === "login" ? handleLogin : handleSignup} className="space-y-8">
             <AnimatePresence mode="wait">
               <motion.div
                 key={mode}
-                initial={{ opacity: 0, x: 20 }}
+                initial={{ opacity: 0, x: 10 }}
                 animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.3 }}
-                className="space-y-4"
+                exit={{ opacity: 0, x: -10 }}
+                className="space-y-6"
               >
                 {mode === "signup" && (
-                  <div className="space-y-2">
-                    <label className="block text-[10px] font-black text-white/30 uppercase tracking-widest pr-2">الاسم الكامل</label>
+                  <div className="space-y-3">
+                    <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest pr-2">الاسم الحقيقي</label>
                     <input
                       type="text"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white focus:outline-none focus:ring-2 focus:ring-white/20 transition-all placeholder:text-white/10"
-                      placeholder="نور أحمد"
+                      className="w-full bg-[#F8FAFC] border border-slate-100 rounded-2xl px-6 py-4 text-[#0F172A] font-bold outline-none focus:ring-2 focus:ring-emerald-100 focus:border-emerald-200 transition-all placeholder:text-slate-300"
+                      placeholder="اسمك الكريم"
                       required
                     />
                   </div>
                 )}
 
-                <div className="space-y-2">
-                  <label className="block text-[10px] font-black text-white/30 uppercase tracking-widest pr-2">اسم المستخدم</label>
+                <div className="space-y-3">
+                  <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest pr-2">اسم المستخدم الحصري</label>
                   <input
                     type="text"
                     value={username}
                     onChange={(e) => setUsername(e.target.value.toLowerCase().trim())}
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white focus:outline-none focus:ring-2 focus:ring-white/20 transition-all placeholder:text-white/10"
-                    placeholder="username"
+                    className="w-full bg-[#F8FAFC] border border-slate-100 rounded-2xl px-6 py-4 text-[#0F172A] font-bold outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-200 transition-all placeholder:text-slate-300"
+                    placeholder="shurooq_99"
                     required
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <label className="block text-[10px] font-black text-white/30 uppercase tracking-widest pr-2">كلمة المرور</label>
+                <div className="space-y-3">
+                  <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest pr-2">كلمة المرور الخاصة بك</label>
                   <input
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white focus:outline-none focus:ring-2 focus:ring-white/20 transition-all placeholder:text-white/10"
+                    className="w-full bg-[#F8FAFC] border border-slate-100 rounded-2xl px-6 py-4 text-[#0F172A] font-bold outline-none focus:ring-2 focus:ring-slate-100 focus:border-slate-200 transition-all placeholder:text-slate-300"
                     placeholder="••••••••"
                     required
                   />
@@ -210,9 +228,9 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
 
             {error && (
               <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
+                initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="bg-rose-500/10 border border-rose-500/20 text-rose-400 p-4 rounded-2xl text-[11px] font-bold text-center"
+                className="bg-rose-50 border border-rose-100 text-rose-500 px-5 py-3 rounded-xl text-[10px] font-black text-center uppercase tracking-widest"
               >
                 {error}
               </motion.div>
@@ -221,37 +239,39 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
             <button
               type="submit"
               disabled={loading}
-              className="w-full relative group/btn"
+              className="w-full relative group"
             >
-              <div className="absolute inset-0 bg-white blur-xl opacity-0 group-hover/btn:opacity-20 transition-opacity rounded-2xl" />
-              <div className="relative bg-white text-slate-950 font-black py-4 rounded-2xl transition-all active:scale-95 flex items-center justify-center gap-2 overflow-hidden">
+              <div className="absolute inset-0 bg-slate-900 rounded-2xl blur-lg opacity-20 group-hover:opacity-30 transition-opacity" />
+              <div className="relative bg-[#0F172A] text-white font-black py-5 rounded-2xl shadow-xl transition-all active:scale-[0.98] flex items-center justify-center gap-3 overflow-hidden">
                 {loading ? (
-                  <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                  <Loader2 className="w-5 h-5 animate-spin text-emerald-400" />
                 ) : (
                   <>
-                    <span className="relative z-10">{mode === "login" ? "دخول" : "إنشاء الحساب"}</span>
-                    <Sparkles className="w-4 h-4" />
+                    <span className="text-[12px] uppercase tracking-[0.2em]">{mode === "login" ? "الدخول" : "تأكيد الانضمام"}</span>
+                    <Sparkles className="w-4 h-4 text-emerald-400" />
                   </>
                 )}
-                {/* Button Shine Effect */}
-                <div className="absolute inset-0 translate-x-[-100%] group-hover/btn:translate-x-[100%] transition-transform duration-1000 bg-gradient-to-r from-transparent via-black/5 to-transparent shadow-xl" />
+
+                {/* Shine Hover Effect */}
+                <div className="absolute inset-0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/5 to-transparent shadow-xl" />
               </div>
             </button>
-
-            <p className="text-center text-white/20 text-[9px] font-bold uppercase tracking-widest pt-2">
-              بمجرد دخولك، أنت توافق على رحلة الإيمان المشترك
-            </p>
           </form>
         </div>
 
-        {/* Floating Heart Decorations */}
-        <div className="absolute -top-10 -right-10 opacity-10 blur-sm">
-          <Heart className="w-20 h-20 text-white fill-current animate-bounce" style={{ animationDuration: '3s' }} />
-        </div>
-        <div className="absolute -bottom-12 -left-12 opacity-5 blur-sm">
-          <Heart className="w-32 h-32 text-indigo-500 fill-current animate-pulse" />
-        </div>
+        <p className="text-center text-slate-400 text-[9px] font-bold uppercase tracking-[0.3em] mt-8 opacity-60">
+          نورونا . تجربة دينية مشتركة
+        </p>
       </motion.div>
     </div>
+  );
+}
+
+// Custom Loader Icon for better styling
+function Loader2({ className }: { className?: string }) {
+  return (
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+    </svg>
   );
 }

@@ -223,12 +223,6 @@ export function PodcastCard() {
       <div className="relative z-10 p-5 sm:p-6">
         {/* Header */}
         <div className="flex items-center gap-4 mb-6">
-          <div className="relative shrink-0">
-            <div className="absolute inset-0 bg-red-500 blur-xl opacity-40 animate-pulse"></div>
-            <div className="relative bg-gradient-to-br from-red-500 to-pink-600 p-3 rounded-2xl shadow-lg ring-4 ring-white/10">
-              <Tv2 className="w-6 h-6 text-white" />
-            </div>
-          </div>
           <div className="flex-1 min-w-0">
             <h3 className="font-black text-white text-lg flex items-center gap-2 leading-none">
               <Radio className="w-4 h-4 text-red-400 animate-pulse" />

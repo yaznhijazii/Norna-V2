@@ -20,15 +20,17 @@ interface UserStats {
 interface DailyPartnerStatsProps {
   currentUserId: string;
   partnerId?: string;
+  partnerData?: any;
 }
 
-export function DailyPartnerStats({ currentUserId, partnerId }: DailyPartnerStatsProps) {
+export function DailyPartnerStats({ currentUserId, partnerId, partnerData }: DailyPartnerStatsProps) {
   const [partnerStats, setPartnerStats] = useState<UserStats | null>(null);
 
   useEffect(() => {
     if (partnerId) {
       loadPartnerStats();
-      const interval = setInterval(loadPartnerStats, 60000);
+      // Increased interval to reduce DB load
+      const interval = setInterval(loadPartnerStats, 120000); // 2 minutes instead of 1
       return () => clearInterval(interval);
     }
   }, [partnerId]);
@@ -36,7 +38,7 @@ export function DailyPartnerStats({ currentUserId, partnerId }: DailyPartnerStat
   const loadPartnerStats = async () => {
     if (!partnerId) return;
     try {
-      const { data: userData } = await supabase.from('users').select('username, name, avatar_url').eq('id', partnerId).single();
+      // Parallel fetch tasks ONLY (No more redundant user fetching)
       const [prayers, quranList, athkarList] = await Promise.all([
         getTodayPrayers(partnerId),
         getTodayQuranProgress(partnerId),
@@ -49,14 +51,16 @@ export function DailyPartnerStats({ currentUserId, partnerId }: DailyPartnerStat
 
       setPartnerStats({
         userId: partnerId,
-        username: userData?.name || userData?.username || 'الشريك',
+        username: partnerData?.name || partnerData?.username || 'الشريك',
         totalTasks: 9,
         completedTasks: completedPrayers + completedQuran + completedAthkar,
         prayers: { total: 5, completed: completedPrayers },
         quran: { total: 2, completed: completedQuran },
         athkar: { total: 2, completed: completedAthkar },
       });
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      console.error('Error loading partner stats:', e);
+    }
   };
 
   if (!partnerStats) return null;

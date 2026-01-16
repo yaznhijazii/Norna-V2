@@ -49,11 +49,18 @@ export function AudioCenter() {
   const togglePlay = () => {
     const audio = activeTab === 'radio' ? radioAudioRef.current : quranAudioRef.current;
     if (!audio) return;
+
     if (isPlaying) {
       audio.pause();
     } else {
-      if (activeTab === 'radio') audio.load();
-      audio.play().catch(err => console.error('Error playing:', err));
+      if (activeTab === 'radio') {
+        setIsBuffering(true);
+        audio.load();
+      }
+      audio.play().catch(err => {
+        console.error('Error playing:', err);
+        setIsBuffering(false);
+      });
     }
   };
 
@@ -95,18 +102,19 @@ export function AudioCenter() {
   ] as const;
 
   return (
-    <div className="flex flex-col gap-6 max-w-2xl mx-auto">
+    <div className="flex flex-col gap-4 max-w-2xl mx-auto">
       {/* Header Section */}
-      <div className="px-2 pt-2">
-        <div className="flex items-center justify-between mb-2">
-          <div>
-            <h1 className="text-2xl font-black text-slate-800 dark:text-white leading-none">المشعل الصوتي</h1>
-            <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1.5 flex items-center gap-2">
-              <Music className="w-3 h-3 text-emerald-500" /> استمع واطمئن
-            </p>
+      <div className="px-2 pt-10">
+        <div className="flex items-center justify-between mb-4" dir="rtl">
+          <div className="text-right">
+            <h1 className="text-3xl font-black text-slate-800 dark:text-white mb-1">المشغل الصوتي</h1>
+            <div className="flex items-center gap-2 text-[#62748e] font-bold text-[11px] uppercase tracking-widest">
+              <Music className="w-4 h-4 text-emerald-500" />
+              <span>استمع واطمئن</span>
+            </div>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-white dark:bg-white/5 flex items-center justify-center shadow-sm border border-slate-100 dark:border-white/10">
-            <Mic2 className="w-6 h-6 text-slate-400 group-hover:text-emerald-500 transition-colors" />
+          <div className="w-12 h-12 rounded-[18px] bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 shadow-sm flex items-center justify-center">
+            <Mic2 className="w-6 h-6 text-slate-400 dark:text-slate-500" />
           </div>
         </div>
       </div>
@@ -240,7 +248,25 @@ export function AudioCenter() {
                   </div>
                 </div>
               </div>
-              <audio ref={radioAudioRef} src="https://backup.qurango.net/radio/mishary_alafasi" onPlay={() => { setIsPlaying(true); setIsBuffering(false); }} onPause={() => { setIsPlaying(false); setIsBuffering(false); }} onWaiting={() => setIsBuffering(true)} onPlaying={() => setIsBuffering(false)} />
+              <audio
+                ref={radioAudioRef}
+                src="https://qurango.net/radio/mishary_alafasi"
+                onPlay={() => { setIsPlaying(true); setIsBuffering(false); }}
+                onPause={() => { setIsPlaying(false); setIsBuffering(false); }}
+                onWaiting={() => setIsBuffering(true)}
+                onPlaying={() => setIsBuffering(false)}
+                onError={(e) => {
+                  console.error('Radio Error:', e);
+                  setIsPlaying(false);
+                  setIsBuffering(false);
+                  // Try a fallback if the main one fails
+                  if (radioAudioRef.current && radioAudioRef.current.src !== "https://stream.radiojar.com/8s5u8p3p0uquv") {
+                    radioAudioRef.current.src = "https://stream.radiojar.com/8s5u8p3p0uquv";
+                    radioAudioRef.current.load();
+                    radioAudioRef.current.play();
+                  }
+                }}
+              />
             </div>
           )}
 
@@ -421,6 +447,6 @@ export function AudioCenter() {
           )}
         </motion.div>
       </AnimatePresence>
-    </div>
+    </div >
   );
 }

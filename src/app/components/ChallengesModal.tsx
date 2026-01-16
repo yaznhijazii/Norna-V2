@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Trophy, Target, Users, BookOpen, Quote, ChevronRight, CheckCircle2, Flame, Calendar, Plus, HandHeart, X, ArrowLeft, Send } from 'lucide-react';
+import { Trophy, Target, Users, BookOpen, Quote, ChevronRight, CheckCircle2, Flame, Calendar, Plus, HandHeart, X, ArrowLeft, Send, Mic } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import confetti from 'canvas-confetti';
+import { toast } from 'sonner';
 import { UserChallengeData } from './ChallengesCard';
 
 interface Action {
@@ -36,8 +37,8 @@ const CHALLEGES_LIST: ChallengeTemplate[] = [
         ],
         fields: [
             { id: 'surah', label: 'اسم السورة', placeholder: 'مثلاً: سورة النبأ', type: 'text' },
-            { id: 'from_page', label: 'من صفحة', placeholder: '1', type: 'number' },
-            { id: 'to_page', label: 'إلى صفحة', placeholder: '2', type: 'number' }
+            { id: 'from_ayah', label: 'من آية', placeholder: '1', type: 'number' },
+            { id: 'to_ayah', label: 'إلى آية', placeholder: '10', type: 'number' }
         ]
     },
     {
@@ -65,6 +66,8 @@ interface ChallengesModalProps {
     onAddChallenge: (challenge: UserChallengeData) => void;
     onUpdateChallenge: (challengeId: string, progress: number) => void;
     onCompleteChallenge: (challengeId: string) => void;
+    onCancelChallenge: (challengeId: string) => void;
+    onOpenTasmeeRoom?: (details: any) => void;
 }
 
 export function ChallengesModal({
@@ -74,12 +77,27 @@ export function ChallengesModal({
     activeChallenges,
     onAddChallenge,
     onUpdateChallenge,
-    onCompleteChallenge
+    onCompleteChallenge,
+    onCancelChallenge,
+    onOpenTasmeeRoom
 }: ChallengesModalProps) {
     const [activeTab, setActiveTab] = useState<'available' | 'active'>('available');
     const [selectedToJoin, setSelectedToJoin] = useState<ChallengeTemplate | null>(null);
     const [formValues, setFormValues] = useState<Record<string, string>>({});
     const [selectedChallengeDetail, setSelectedChallengeDetail] = useState<string | null>(null);
+    const [updateValue, setUpdateValue] = useState('');
+    const [surahs, setSurahs] = useState<any[]>([]);
+    const [selectedSurah, setSelectedSurah] = useState<any>(null);
+
+    // Fetch Surahs
+    useEffect(() => {
+        if (isOpen) {
+            fetch('https://api.alquran.cloud/v1/surah')
+                .then(res => res.json())
+                .then(data => setSurahs(data.data))
+                .catch(err => console.error('Error fetching surahs:', err));
+        }
+    }, [isOpen]);
 
     // Switch to active tab if there are active challenges and modal opens
     useEffect(() => {
@@ -96,7 +114,10 @@ export function ChallengesModal({
             id: Math.random().toString(36).substr(2, 9),
             type: selectedToJoin.category,
             title: selectedToJoin.title,
-            details: { ...formValues },
+            details: {
+                ...formValues,
+                surah: selectedSurah?.name || formValues.surah
+            },
             progress: 0,
             partnerProgress: 0, // In reality, fetch from DB
             startDate: new Date().toISOString(),
@@ -105,6 +126,7 @@ export function ChallengesModal({
         onAddChallenge(newChallenge);
         setSelectedToJoin(null);
         setFormValues({});
+        setSelectedSurah(null);
         setActiveTab('active');
 
         confetti({
@@ -192,7 +214,7 @@ export function ChallengesModal({
                                                 <div>
                                                     <h3 className="font-bold text-slate-800 dark:text-white text-lg">{currentActiveChallenge.title}</h3>
                                                     <p className="text-[10px] text-slate-400 font-bold uppercase">
-                                                        {currentActiveChallenge.type === 'quran' ? `سورة ${currentActiveChallenge.details.surah}` : `صدقة بقيمة ${currentActiveChallenge.details.amount}`}
+                                                        {currentActiveChallenge.type === 'quran' ? `${currentActiveChallenge.details.surah.startsWith('سُورَةُ') ? '' : 'سورة '}${currentActiveChallenge.details.surah} • الآيات (${currentActiveChallenge.details.from_ayah || 1} - ${currentActiveChallenge.details.to_ayah || 1})` : `صدقة بقيمة ${currentActiveChallenge.details.amount}`}
                                                     </p>
                                                 </div>
                                             </div>
@@ -218,18 +240,67 @@ export function ChallengesModal({
                                                 </div>
                                             </div>
 
-                                            <div className="grid grid-cols-2 gap-3">
+                                            {currentActiveChallenge.type === 'quran' && onOpenTasmeeRoom && (
                                                 <button
-                                                    onClick={() => onUpdateChallenge(currentActiveChallenge.id, Math.min(100, currentActiveChallenge.progress + 10))}
-                                                    className="py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl text-[11px] font-black text-slate-700 dark:text-slate-200 hover:border-indigo-500 transition-all"
+                                                    onClick={() => onOpenTasmeeRoom(currentActiveChallenge.details)}
+                                                    className="w-full mb-4 py-4 bg-indigo-600/10 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30 rounded-2xl text-[12px] font-black flex items-center justify-center gap-3 hover:bg-indigo-600/20 transition-all group"
                                                 >
-                                                    تحديث التقدم +10%
+                                                    <Mic className="w-4 h-4" /> لدخول غرفة التسميع المباشرة
                                                 </button>
+                                            )}
+
+                                            <div className="flex flex-col gap-3">
+                                                <div className="relative group">
+                                                    <input
+                                                        type="number"
+                                                        placeholder={currentActiveChallenge.type === 'quran' ? "كم آية أنهيت حتى الآن؟" : "كم تصدقت حتى الآن؟"}
+                                                        value={updateValue}
+                                                        onChange={(e) => setUpdateValue(e.target.value)}
+                                                        className="w-full py-4 px-5 bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-white/5 rounded-2xl text-xs font-black text-slate-800 dark:text-white focus:outline-none focus:border-indigo-500/50 transition-all"
+                                                    />
+                                                    <button
+                                                        onClick={() => {
+                                                            const val = parseInt(updateValue);
+                                                            if (!isNaN(val) && val >= 0) {
+                                                                let progress = 0;
+                                                                if (currentActiveChallenge.type === 'quran') {
+                                                                    const from = parseInt(currentActiveChallenge.details.from_ayah) || 1;
+                                                                    const to = parseInt(currentActiveChallenge.details.to_ayah) || 1;
+                                                                    const total = Math.max(1, to - from + 1);
+                                                                    progress = Math.min(100, Math.round((val / total) * 100));
+                                                                } else {
+                                                                    // For charity or other, treat as manual percentage or a simplified logic
+                                                                    progress = Math.min(100, val);
+                                                                }
+                                                                onUpdateChallenge(currentActiveChallenge.id, progress);
+                                                                setUpdateValue('');
+                                                                toast.success('تم تحديث إنجازك بنجاح! 💪', { position: 'top-center' });
+                                                            }
+                                                        }}
+                                                        className="absolute left-2 top-2 bottom-2 px-6 bg-indigo-600 text-white rounded-xl text-[10px] font-black shadow-lg shadow-indigo-600/20 active:scale-95 transition-all"
+                                                    >
+                                                        تحديث
+                                                    </button>
+                                                </div>
+
                                                 <button
                                                     onClick={() => { onCompleteChallenge(currentActiveChallenge.id); setSelectedChallengeDetail(null); confetti(); }}
-                                                    className="py-3 bg-emerald-600 text-white rounded-xl text-[11px] font-black shadow-lg shadow-emerald-600/20 active:scale-95 transition-all"
+                                                    className="w-full py-4 bg-emerald-600 text-white rounded-2xl text-[12px] font-black shadow-xl shadow-emerald-600/20 active:scale-95 transition-all flex items-center justify-center gap-2"
                                                 >
-                                                    إتمام التحدي بنجاح ✅
+                                                    <CheckCircle2 className="w-4 h-4" /> إتمام التحدي كاملاً
+                                                </button>
+
+                                                <button
+                                                    onClick={() => {
+                                                        if (window.confirm('هل أنت متأكد من إلغاء هذا التحدي؟')) {
+                                                            onCancelChallenge(currentActiveChallenge.id);
+                                                            setSelectedChallengeDetail(null);
+                                                            toast.error('تم إلغاء التحدي');
+                                                        }
+                                                    }}
+                                                    className="w-full py-3 text-[10px] font-black text-rose-500 hover:text-rose-600 transition-colors uppercase tracking-widest mt-2"
+                                                >
+                                                    إلغاء التحدي نهائياً ✕
                                                 </button>
                                             </div>
                                         </div>
@@ -258,14 +329,44 @@ export function ChallengesModal({
                                             <div className="space-y-4">
                                                 {selectedToJoin.fields?.map((field) => (
                                                     <div key={field.id} className="space-y-1.5 px-1">
-                                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">{field.label}</label>
-                                                        <input
-                                                            type={field.type}
-                                                            placeholder={field.placeholder}
-                                                            value={formValues[field.id] || ''}
-                                                            onChange={(e) => setFormValues({ ...formValues, [field.id]: e.target.value })}
-                                                            className="w-full p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all shadow-sm"
-                                                        />
+                                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">
+                                                            {field.label}
+                                                            {field.id === 'from_ayah' && selectedSurah && (
+                                                                <span className="text-[9px] text-indigo-500 mr-2">(من 1 إلى {selectedSurah.numberOfAyahs})</span>
+                                                            )}
+                                                            {field.id === 'to_ayah' && selectedSurah && (
+                                                                <span className="text-[9px] text-indigo-500 mr-2">(بأقصى حد {selectedSurah.numberOfAyahs})</span>
+                                                            )}
+                                                        </label>
+                                                        {field.id === 'surah' ? (
+                                                            <div className="relative">
+                                                                <select
+                                                                    value={selectedSurah?.number || ''}
+                                                                    onChange={(e) => {
+                                                                        const s = surahs.find(x => x.number === parseInt(e.target.value));
+                                                                        setSelectedSurah(s);
+                                                                        setFormValues({ ...formValues, [field.id]: s?.name || '' });
+                                                                    }}
+                                                                    className="w-full p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all shadow-sm appearance-none cursor-pointer"
+                                                                >
+                                                                    <option value="">اختر السورة</option>
+                                                                    {surahs.map(s => (
+                                                                        <option key={s.number} value={s.number}>{s.name} ({s.englishName})</option>
+                                                                    ))}
+                                                                </select>
+                                                                <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                                                                    <ChevronRight className="w-4 h-4 text-slate-400 rotate-90" />
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <input
+                                                                type={field.type}
+                                                                placeholder={field.placeholder}
+                                                                value={formValues[field.id] || ''}
+                                                                onChange={(e) => setFormValues({ ...formValues, [field.id]: e.target.value })}
+                                                                className="w-full p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all shadow-sm"
+                                                            />
+                                                        )}
                                                     </div>
                                                 ))}
                                             </div>
@@ -344,7 +445,7 @@ export function ChallengesModal({
                                                     </div>
                                                     <div className="flex items-center justify-between px-2 pt-1 border-t border-slate-50 dark:border-white/5 mt-1">
                                                         <span className="text-[10px] font-bold text-slate-400">
-                                                            {challenge.type === 'quran' ? `سورة ${challenge.details.surah}` : `صدقة بقيمة ${challenge.details.amount}`}
+                                                            {challenge.type === 'quran' ? `${challenge.details.surah.startsWith('سُورَةُ') || challenge.details.surah.includes('سورة') ? '' : 'سورة '}${challenge.details.surah} • الآيات (${challenge.details.from_ayah || 1} - ${challenge.details.to_ayah || 1})` : `صدقة بقيمة ${challenge.details.amount}`}
                                                         </span>
                                                         <div className="flex -space-x-2">
                                                             <div className="w-6 h-6 rounded-full border-2 border-white bg-slate-200" />

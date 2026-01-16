@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { BookOpen, X, Loader2, Check, RotateCcw, Bookmark, Star, Play, Pause, Flame, Users, Award, Heart, ArrowDown, Calendar, ArrowLeft, ChevronRight, ChevronLeft, Plus, Trash2, User, BookHeart, Edit2, Bell, Trash, Clock, Lock, Settings } from 'lucide-react';
+import { BookOpen, X, Loader2, Check, RotateCcw, Bookmark, Star, Play, Pause, Flame, Users, Award, Heart, ArrowDown, Calendar, ArrowLeft, ChevronRight, ChevronLeft, Plus, Trash2, User, BookHeart, Edit2, Bell, Trash, Clock, Lock, Settings, Sunrise, Sun, CloudSun, Sunset, Moon } from 'lucide-react';
 import { InAppNotification } from './NotificationBanner';
 import { motion, AnimatePresence } from 'motion/react';
 import { TasbihIcon } from './TasbihIcon';
@@ -15,15 +15,14 @@ import { supabase } from "../utils/supabase";
 import { fetchJordanHolidays, getNextHoliday, Holiday } from "../utils/holidays";
 
 const moods = [
-  { id: 'serene', icon: '🤍', label: 'مطمئن' },
-  { id: 'happy', icon: '❤️', label: 'سعيد' },
-  { id: 'seeking', icon: '💜', label: 'مشتاق' },
-  { id: 'pensive', icon: '💙', label: 'متفكر' },
-  { id: 'low', icon: '🖤', label: 'مرهق' },
+  { id: 'serene', label: 'مطمئن', color: 'text-slate-100', bg: 'bg-slate-500/10', fill: '#f8fafc' },
+  { id: 'happy', label: 'سعيد', color: 'text-rose-500', bg: 'bg-rose-500/10', fill: '#f43f5e' },
+  { id: 'seeking', label: 'مشتاق', color: 'text-purple-500', bg: 'bg-purple-500/10', fill: '#a855f7' },
+  { id: 'pensive', label: 'متفكر', color: 'text-blue-500', bg: 'bg-blue-500/10', fill: '#3b82f6' },
+  { id: 'low', label: 'مرهق', color: 'text-slate-500', bg: 'bg-slate-500/10', fill: '#64748b' },
 ];
 
-const logoImage =
-  "https://raw.githubusercontent.com/yaznhijazii/personalsfiles/refs/heads/main/norna.png";
+const logoImage = "/norna.png";
 
 interface DailyHeaderProps {
   userName?: string;
@@ -59,6 +58,7 @@ export function DailyHeader({
   const [partnerMood, setPartnerMood] = useState<{ mood: string; updatedAt: string } | null>(null);
   const timeOfDay = useTimeOfDay();
   const timeConfig = timeOfDayConfig[timeOfDay];
+  const [showRealTime, setShowRealTime] = useState(false);
 
   // Extract first name only
   const firstName = userName ? userName.split(" ")[0] : "";
@@ -321,22 +321,31 @@ export function DailyHeader({
       const maghribMinutes = timeStringToMinutes(prayerTimes.Maghrib);
       const ishaMinutes = timeStringToMinutes(prayerTimes.Isha);
 
-      // 1. Mandatory Prayers
-      if (currentMinutes >= fajrMinutes && currentMinutes < fajrMinutes + 60) {
+      // 1. Mandatory Prayers (with 30 min preview)
+      const previewWindow = 30; // minutes
+      if (currentMinutes >= fajrMinutes - previewWindow && currentMinutes < fajrMinutes + 60) {
         current = "صلاة الفجر";
-      } else if (currentMinutes >= dhuhrMinutes && currentMinutes < dhuhrMinutes + 90) {
+      } else if (currentMinutes >= dhuhrMinutes - previewWindow && currentMinutes < dhuhrMinutes + 90) {
         current = "صلاة الظهر";
-      } else if (currentMinutes >= asrMinutes && currentMinutes < asrMinutes + 90) {
+      } else if (currentMinutes >= asrMinutes - previewWindow && currentMinutes < asrMinutes + 90) {
         current = "صلاة العصر";
-      } else if (currentMinutes >= maghribMinutes && currentMinutes < maghribMinutes + 60) {
+      } else if (currentMinutes >= maghribMinutes - previewWindow && currentMinutes < maghribMinutes + 60) {
         current = "صلاة المغرب";
-      } else if (currentMinutes >= ishaMinutes && currentMinutes < ishaMinutes + 120) {
+      } else if (currentMinutes >= ishaMinutes - previewWindow && currentMinutes < ishaMinutes + 120) {
         current = "صلاة العشاء";
       }
 
-      // 2. Special Occasions
-      if (!current && nextHoliday && nextHoliday.name.includes("الإسراء") && nextHoliday.daysUntil <= 1) {
-        current = "أدعية الإسراء والمعراج";
+      // 2. Special Occasions (Specific Timeframe Logic)
+      if (!current && nextHoliday && nextHoliday.daysUntil === 0) {
+        // Example: If it's Israa and Miraj, only show it late at night (e.g., 12 AM - 3 AM)
+        if (nextHoliday.name.includes("الإسراء")) {
+          if (currentMinutes >= 0 && currentMinutes < 3 * 60) {
+            current = `ليلة ${nextHoliday.name}`;
+          }
+        } else {
+          // For other holidays, show all day
+          current = `ذكرى ${nextHoliday.name}`;
+        }
       }
 
       // 3. Weekly/Daily Religious Tasks
@@ -451,17 +460,35 @@ export function DailyHeader({
               whileHover={{ scale: 1.05, rotate: 5 }}
               className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-2xl flex items-center justify-center text-2xl shadow-xl border border-white/30 shrink-0"
             >
-              {timeConfig.icon}
+              {(() => {
+                switch (timeConfig.icon) {
+                  case 'sunrise': return <Sunrise className="w-7 h-7 text-amber-300" />;
+                  case 'sun': return <Sun className="w-7 h-7 text-amber-400" />;
+                  case 'cloud-sun': return <CloudSun className="w-7 h-7 text-sky-300" />;
+                  case 'sunset': return <Sunset className="w-7 h-7 text-orange-400" />;
+                  case 'moon': return <Moon className="w-7 h-7 text-indigo-200" />;
+                  default: return <Sun className="w-7 h-7" />;
+                }
+              })()}
             </motion.div>
-            <div className="space-y-1">
+            {/* Header Text Section with Click Handler */}
+            <div className="space-y-1 cursor-pointer" onClick={() => setShowRealTime(!showRealTime)}>
               <div className="flex items-center gap-2 text-white/80">
                 <span className="text-[10px] font-black uppercase tracking-[0.2em]">{timeConfig.name}</span>
                 <span className="w-1 h-1 bg-white/40 rounded-full"></span>
                 <span className="text-[11px] font-bold text-white/90">{dayName}، {day} {month}</span>
               </div>
-              <h1 className="text-2xl sm:text-3xl font-black leading-tight tracking-tight">
-                {displayedText}
-                {!isTypingComplete && <span className="animate-pulse text-amber-300 ml-1">|</span>}
+              <h1 className="text-2xl sm:text-3xl font-black leading-tight tracking-tight min-h-[40px] flex items-center">
+                {showRealTime ? (
+                  <span className="font-mono tracking-widest text-3xl tabular-nums">
+                    {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }).replace('AM', 'ص').replace('PM', 'm')}
+                  </span>
+                ) : (
+                  <>
+                    {displayedText}
+                    {!isTypingComplete && <span className="animate-pulse text-amber-300 ml-1">|</span>}
+                  </>
+                )}
               </h1>
             </div>
           </div>
@@ -478,7 +505,7 @@ export function DailyHeader({
                 onClick={() => setShowNotifHistory(!showNotifHistory)}
                 className={`w-11 h-11 flex items-center justify-center rounded-2xl transition-all relative border backdrop-blur-md ${showNotifHistory ? 'bg-white/30 border-white/40 scale-105 shadow-2xl' : 'bg-white/10 border-white/20 hover:bg-white/25 hover:scale-105 active:scale-95 shadow-xl'}`}
               >
-                <Bell className={`w-5 h-5 text-white/90 ${hasUnreadNotifs ? 'animate-bounce' : ''}`} />
+                <Bell className="w-5 h-5 text-white/90" />
                 {hasUnreadNotifs && (
                   <span className="absolute top-3 right-3 w-2 h-2 bg-rose-500 rounded-full border-2 border-white shadow-[0_0_8px_rgba(244,63,94,0.6)] animate-pulse"></span>
                 )}
@@ -487,34 +514,64 @@ export function DailyHeader({
               <AnimatePresence>
                 {showNotifHistory && (
                   <motion.div
-                    initial={{ opacity: 0, scale: 0.95, y: 15 }}
+                    initial={{ opacity: 0, scale: 0.95, y: 10 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95, y: 15 }}
-                    className="absolute top-[calc(100%+12px)] left-0 w-[300px] bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl z-[9999] border border-slate-100 dark:border-white/10 overflow-hidden backdrop-blur-3xl"
+                    exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                    className="absolute top-[calc(100%+12px)] left-0 w-[300px] bg-white/95 dark:bg-slate-900/95 backdrop-blur-3xl rounded-[2rem] shadow-[0_20px_40px_-12px_rgba(0,0,0,0.25)] z-[9999] border border-white dark:border-white/10 overflow-hidden"
                   >
-                    <div className="px-5 py-4 bg-slate-50/80 dark:bg-white/5 border-b border-slate-100 dark:border-white/5 flex items-center justify-between">
-                      <h3 className="font-black text-[11px] text-slate-800 dark:text-white uppercase tracking-widest">مركز التنبيهات</h3>
+                    <div className="px-3 py-1.5 bg-gradient-to-r from-slate-50 to-white dark:from-white/5 dark:to-transparent border-b border-slate-100 dark:border-white/5 flex items-center justify-between">
+                      <div className="flex items-center gap-1">
+                        <div className="w-1 h-1 rounded-full bg-emerald-500"></div>
+                        <h3 className="font-black text-[8px] text-slate-800 dark:text-white uppercase tracking-[0.1em]">التنبيهات</h3>
+                      </div>
                       {notifHistory.length > 0 && (
-                        <button onClick={clearHistory} className="text-[10px] font-black text-rose-500 hover:text-rose-600 transition-colors">مسح الكل</button>
+                        <button
+                          onClick={clearHistory}
+                          className="text-[9px] font-black text-rose-500 hover:text-rose-600 transition-all hover:scale-105 active:scale-95 bg-rose-50 dark:bg-rose-500/10 px-3 py-1 rounded-full uppercase tracking-wider"
+                        >
+                          مسح
+                        </button>
                       )}
                     </div>
-                    <div className="max-h-[300px] overflow-y-auto custom-scrollbar p-2">
+
+                    <div className="max-h-[140px] overflow-y-auto custom-scrollbar p-1.5 space-y-1">
                       {notifHistory.length === 0 ? (
-                        <div className="py-8 text-center">
-                          <Bell className="w-8 h-8 text-slate-200 mx-auto mb-2" />
-                          <p className="text-slate-400 text-[10px] font-bold">لا يوجد تنبيهات حالياً</p>
+                        <div className="py-3 text-center">
+                          <div className="relative inline-block mb-1">
+                            <div className="absolute inset-0 bg-slate-100 dark:bg-white/5 blur-2xl rounded-full scale-150"></div>
+                            <div className="relative w-14 h-14 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center shadow-lg border border-slate-50 dark:border-white/5 mx-auto">
+                              <Bell className="w-6 h-6 text-slate-200 dark:text-slate-700" />
+                            </div>
+                          </div>
+                          <p className="text-slate-400 dark:text-slate-500 text-[11px] font-black uppercase tracking-wider">لا توجد تنبيهات حالياً</p>
+                          <p className="text-slate-300 dark:text-slate-600 text-[9px] mt-1">سنطلعك على كل جديد هنا</p>
                         </div>
                       ) : (
                         notifHistory.map((notif: any) => (
-                          <div key={notif.id} className="p-3 hover:bg-slate-50 dark:hover:bg-white/5 rounded-2xl transition-all flex gap-3 items-center group">
-                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm transition-transform group-hover:scale-110 ${notif.type === 'gift' ? 'bg-rose-50 dark:bg-rose-500/10 text-rose-500' : 'bg-slate-50 dark:bg-white/5 text-slate-500'}`}>
-                              {notif.type === 'gift' ? <Heart className="w-5 h-5" /> : <Bell className="w-5 h-5" />}
+                          <motion.div
+                            key={notif.id}
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            className="p-4 bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10 rounded-[1.5rem] transition-all flex gap-4 items-start group cursor-pointer border border-transparent hover:border-slate-100 dark:hover:border-white/5"
+                          >
+                            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 shadow-sm transition-all group-hover:scale-110 group-hover:rotate-3 ${notif.type === 'gift' ? 'bg-rose-50 dark:bg-rose-500/10 text-rose-500 shadow-rose-100/50' :
+                              notif.type === 'prayer' ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500 shadow-emerald-100/50' :
+                                'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-500 shadow-indigo-100/50'
+                              }`}>
+                              {notif.type === 'gift' ? <Heart className="w-5 h-5 fill-current" /> :
+                                notif.type === 'prayer' ? <Star className="w-5 h-5 fill-current" /> :
+                                  <Bell className="w-5 h-5" />}
                             </div>
-                            <div className="min-w-0 flex-1">
-                              <h4 className="text-[11px] font-black text-slate-800 dark:text-white truncate">{notif.title}</h4>
-                              <p className="text-[9px] text-slate-500 dark:text-slate-400 line-clamp-1 mt-0.5">{notif.body}</p>
+                            <div className="min-w-0 flex-1 py-0.5">
+                              <div className="flex items-center justify-between mb-0.5">
+                                <h4 className="text-[12px] font-black text-slate-800 dark:text-white truncate">{notif.title}</h4>
+                                <span className="text-[8px] font-black text-slate-300 dark:text-slate-600 uppercase">
+                                  {notif.timestamp ? new Date(notif.timestamp).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) : ''}
+                                </span>
+                              </div>
+                              <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2">{notif.body}</p>
                             </div>
-                          </div>
+                          </motion.div>
                         ))
                       )}
                     </div>
@@ -601,12 +658,17 @@ export function DailyHeader({
               className="bg-emerald-500/10 backdrop-blur-2xl rounded-3xl border border-emerald-500/30 flex items-center justify-center gap-3 h-24 px-4 hover:bg-emerald-500/20 transition-all group shadow-2xl relative overflow-hidden text-right"
             >
               <div className="w-11 h-11 rounded-2xl bg-white/10 flex items-center justify-center shrink-0 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500 overflow-hidden relative">
-                {partnerMood?.mood ? (
-                  <span className="text-2xl drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]">
-                    {moods.find(m => m.id === partnerMood.mood)?.icon || '❤️'}
-                  </span>
-                ) : (
-                  <Heart className="w-6 h-6 text-pink-400 fill-current drop-shadow-[0_0_10px_rgba(244,114,182,0.5)]" />
+                {partnerMood?.mood ? (() => {
+                  const mood = moods.find(m => m.id === partnerMood.mood);
+                  return (
+                    <Heart
+                      className={`w-7 h-7 ${mood?.color || 'text-pink-400'}`}
+                      fill="currentColor"
+                      style={{ filter: 'drop-shadow(0 0 8px currentColor)' }}
+                    />
+                  );
+                })() : (
+                  <Heart className="w-6 h-6 text-pink-400/40" />
                 )}
               </div>
               <div className="hidden sm:block">

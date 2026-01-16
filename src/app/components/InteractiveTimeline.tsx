@@ -34,6 +34,7 @@ export function InteractiveTimeline({ userId }: InteractiveTimelineProps) {
   const [completionStatus, setCompletionStatus] = useState<Record<string, boolean>>({});
   const [nextPrayerCountdown, setNextPrayerCountdown] = useState<string>('');
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const hasScrolledRef = useRef(false);
   const clickTimerRef = useRef<{ [key: string]: { count: number; timer: NodeJS.Timeout | null } }>({});
   const prayerTimes = usePrayerTimes();
 
@@ -67,6 +68,28 @@ export function InteractiveTimeline({ userId }: InteractiveTimelineProps) {
       setNextPrayerCountdown('');
     }
   }, [tasks, currentMinutes, completionStatus]);
+
+  // Handle automatic scrolling to active task when user scrolls
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container || tasks.length === 0) return;
+
+    const handleScroll = () => {
+      if (!hasScrolledRef.current) {
+        hasScrolledRef.current = true;
+        const timer = setTimeout(() => {
+          const activeItem = container.querySelector('.item-is-active');
+          if (activeItem) {
+            activeItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 300);
+        return () => clearTimeout(timer);
+      }
+    };
+
+    container.addEventListener('scroll', handleScroll, { once: true });
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [tasks]);
 
   useEffect(() => {
     if (prayerTimes && currentUserId) loadTasks(currentUserId);
@@ -178,10 +201,19 @@ export function InteractiveTimeline({ userId }: InteractiveTimelineProps) {
           </div>
         </div>
         {nextPrayerCountdown && (
-          <div className="flex items-center gap-2 text-[11px] font-black text-white bg-amber-500 px-4 py-2 rounded-full shadow-lg border border-white/20">
-            <Clock className="w-4 h-4 animate-pulse" />
-            <span>{nextPrayerCountdown}</span>
-          </div>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-white/50 dark:bg-slate-900/40 backdrop-blur-md border border-slate-200/60 dark:border-white/5 shadow-sm transition-all hover:shadow-md group"
+          >
+            <div className="w-5 h-5 rounded-lg bg-orange-50 dark:bg-orange-500/10 flex items-center justify-center transition-colors group-hover:bg-orange-100 dark:group-hover:bg-orange-500/20">
+              <Clock className="w-3 h-3 text-orange-500/80" />
+            </div>
+            <div className="flex flex-col items-start leading-none gap-0.5">
+              <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tighter">الصلاة القادمة</span>
+              <span className="text-[11px] font-black text-orange-500/90 dark:text-orange-400/90">{nextPrayerCountdown}</span>
+            </div>
+          </motion.div>
         )}
       </div>
 
@@ -199,9 +231,10 @@ export function InteractiveTimeline({ userId }: InteractiveTimelineProps) {
               const isCompleted = completionStatus[task.id];
               const nextTask = index < tasks.length - 1 ? tasks[index + 1] : null;
               const isMissed = task.isPast && !isCompleted && nextTask && currentMinutes >= (nextTask.timeValue - 2);
+              const isActive = task.isActive;
 
               return (
-                <div key={task.id} className="relative">
+                <div key={task.id} className={`relative ${isActive ? 'item-is-active' : ''}`}>
                   {/* Timeline Dot - Perfectly centered on the line */}
                   <div className="absolute right-[-32px] top-1/2 -translate-y-1/2 z-20 flex items-center justify-center w-6 h-6">
                     <motion.div

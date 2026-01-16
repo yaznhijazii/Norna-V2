@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, X, Loader2 } from 'lucide-react';
+import { Send, X, Loader2, Check, CheckCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface Message {
@@ -139,12 +139,23 @@ export function DirectChat({
                                                 <p className="text-sm font-medium leading-relaxed break-words">
                                                     {message.message_text}
                                                 </p>
-                                                <p
-                                                    className={`text-[9px] mt-1 font-bold ${isSent ? 'text-white/70' : 'text-slate-400'
-                                                        }`}
-                                                >
-                                                    {formatTime(message.created_at)}
-                                                </p>
+                                                <div className="flex items-center justify-between gap-4 mt-1">
+                                                    <p
+                                                        className={`text-[9px] font-bold ${isSent ? 'text-white/70' : 'text-slate-400'
+                                                            }`}
+                                                    >
+                                                        {formatTime(message.created_at)}
+                                                    </p>
+                                                    {isSent && (
+                                                        <div className="flex">
+                                                            {message.is_read ? (
+                                                                <CheckCheck className="w-3 h-3 text-white" />
+                                                            ) : (
+                                                                <Check className="w-3 h-3 text-white/70" />
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
                                         </motion.div>
                                     );

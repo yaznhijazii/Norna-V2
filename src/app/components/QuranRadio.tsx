@@ -11,7 +11,8 @@ export function QuranRadio() {
     id: 14,
     name: "إذاعة القرآن الكريم",
     reader: "مشاري راشد العفاسي",
-    url: "https://backup.qurango.net/radio/mishary_alafasi",
+    url: "https://qurango.net/radio/mishary_alafasi",
+    fallbackUrl: "https://stream.radiojar.com/8s5u8p3p0uquv", // Saudi Quran Live
     description: "بث مباشر على مدار الساعة"
   };
 
@@ -28,10 +29,19 @@ export function QuranRadio() {
       audioRef.current.pause();
       setIsPlaying(false);
     } else {
-      audioRef.current.play().catch(err => {
-        console.error('Error playing audio:', err);
-      });
-      setIsPlaying(true);
+      if (audioRef.current) {
+        audioRef.current.load();
+        audioRef.current.play().catch(err => {
+          console.error('Error playing primary radio:', err);
+          // Try fallback
+          if (audioRef.current) {
+            audioRef.current.src = radioStation.fallbackUrl;
+            audioRef.current.load();
+            audioRef.current.play().catch(e => console.error('Fallback failed:', e));
+          }
+        });
+        setIsPlaying(true);
+      }
     }
   };
 

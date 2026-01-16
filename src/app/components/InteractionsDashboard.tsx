@@ -41,7 +41,6 @@ export function InteractionsDashboard({ interactions, currentUserId, partnerName
             case 'message': return <MessageCircle className="w-4 h-4 text-indigo-500" />;
             case 'dua': return <span className="text-sm">🤲</span>;
             case 'poke': return <Sparkles className="w-4 h-4 text-amber-500" />;
-            case 'highlight': return <BookHeart className="w-4 h-4 text-purple-500" />;
             default: return <GiftIcon className="w-4 h-4 text-slate-400" />;
         }
     };
@@ -56,7 +55,6 @@ export function InteractionsDashboard({ interactions, currentUserId, partnerName
                         {displayedInteractions.map((interaction) => {
                             const senderId = interaction.from_user_id || interaction.user_id;
                             const isSent = senderId === currentUserId;
-                            const isHighlight = interaction.is_highlight;
 
                             return (
                                 <div key={interaction.id} className="flex items-start gap-4 p-5 hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors">
@@ -66,14 +64,14 @@ export function InteractionsDashboard({ interactions, currentUserId, partnerName
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center justify-between mb-1">
                                             <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                                                {isHighlight ? (isSent ? 'فائدتك المشتركة' : `فائدة من ${partnerName}`) : (isSent ? 'أنت' : partnerName)}
+                                                {isSent ? 'هدية منك' : `هدية من ${partnerName}`}
                                             </span>
                                             <span className="text-[10px] font-medium text-slate-300">
                                                 {formatTime(interaction.created_at)}
                                             </span>
                                         </div>
-                                        <p className={`text-[11px] leading-relaxed ${isHighlight ? 'text-slate-700 dark:text-slate-200 font-bold bg-white/50 dark:bg-white/5 p-2 rounded-xl mt-1' : 'text-slate-500 dark:text-slate-400 font-medium'}`}>
-                                            {isHighlight ? interaction.content : (interaction.message_text || 'أرسل تفاعلاً جديداً')}
+                                        <p className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-300 font-medium">
+                                            {interaction.message_text || 'أرسل تفاعلاً جديداً'}
                                         </p>
                                     </div>
                                 </div>
@@ -91,8 +89,11 @@ export function InteractionsDashboard({ interactions, currentUserId, partnerName
                     )}
                 </div>
             ) : (
-                <div className="py-12 text-center">
-                    <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">لا توجد تفاعلات مؤخراً</p>
+                <div className="py-12 text-center bg-white dark:bg-slate-900 rounded-[2.5rem] border border-dashed border-slate-200 dark:border-white/5">
+                    <div className="w-12 h-12 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center mx-auto mb-3">
+                        <GiftIcon className="w-6 h-6 text-slate-300" />
+                    </div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">سجل الهدايا فارغ حتى الآن</p>
                 </div>
             )}
         </div>

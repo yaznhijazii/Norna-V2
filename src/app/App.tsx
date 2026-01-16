@@ -11,6 +11,7 @@ import { ReceiveGiftModal } from './components/ReceiveGiftModal';
 import { NotificationBanner } from './components/NotificationBanner';
 import { SettingsModal } from './components/SettingsModal';
 import { ChallengesModal } from './components/ChallengesModal';
+import { TasmeeRoom } from './components/TasmeeRoom';
 import { UserChallengeData } from './components/ChallengesCard';
 import { supabase } from './utils/supabase';
 import { LoginScreen } from './components/LoginScreen';
@@ -97,6 +98,8 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [showDuaaJournal, setShowDuaaJournal] = useState(false);
   const [showChallenges, setShowChallenges] = useState(false);
+  const [showTasmeeRoom, setShowTasmeeRoom] = useState(false);
+  const [tasmeeDetails, setTasmeeDetails] = useState<any>(null);
   const [showSendGift, setShowSendGift] = useState(false);
   const [receivedGift, setReceivedGift] = useState<any>(null);
   const [partnerActivity, setPartnerActivity] = useState<{ partnerName: string; prayerName: string } | null>(null);
@@ -312,6 +315,8 @@ export default function App() {
           surah: c.surah_name || '',
           from_page: c.start_page?.toString() || '',
           to_page: c.end_page?.toString() || '',
+          from_ayah: c.start_page?.toString() || '',
+          to_ayah: c.end_page?.toString() || '',
           amount: c.charity_amount || '',
           intent: c.charity_intention || ''
         },
@@ -342,8 +347,8 @@ export default function App() {
         partner_id: partnerId || null,
         challenge_type: challenge.type,
         surah_name: challenge.details.surah,
-        start_page: challenge.details.from_page ? parseInt(challenge.details.from_page) : null,
-        end_page: challenge.details.to_page ? parseInt(challenge.details.to_page) : null,
+        start_page: challenge.type === 'quran' ? (challenge.details.from_ayah ? parseInt(challenge.details.from_ayah) : null) : (challenge.details.from_page ? parseInt(challenge.details.from_page) : null),
+        end_page: challenge.type === 'quran' ? (challenge.details.to_ayah ? parseInt(challenge.details.to_ayah) : null) : (challenge.details.to_page ? parseInt(challenge.details.to_page) : null),
         charity_amount: challenge.details.amount,
         charity_intention: challenge.details.intent,
         progress_percent: 0,
@@ -368,6 +373,14 @@ export default function App() {
     const { error } = await supabase
       .from('user_challenges')
       .update({ status: 'completed', completed_at: new Date().toISOString() })
+      .eq('id', challengeId);
+    if (!error) fetchChallenges();
+  };
+
+  const handleCancelChallenge = async (challengeId: string) => {
+    const { error } = await supabase
+      .from('user_challenges')
+      .update({ status: 'cancelled' })
       .eq('id', challengeId);
     if (!error) fetchChallenges();
   };
@@ -453,7 +466,26 @@ export default function App() {
         onAddChallenge={handleAddChallenge}
         onUpdateChallenge={handleUpdateChallenge}
         onCompleteChallenge={handleCompleteChallenge}
+        onCancelChallenge={handleCancelChallenge}
+        onOpenTasmeeRoom={(details) => {
+          setTasmeeDetails(details);
+          setShowTasmeeRoom(true);
+        }}
       />
+
+      {currentUser && (
+        <TasmeeRoom
+          isOpen={showTasmeeRoom}
+          onClose={() => {
+            setShowTasmeeRoom(false);
+            setTasmeeDetails(null);
+          }}
+          currentUserId={currentUser.userId}
+          partnerId={partnerId || ''}
+          partnerName={partnerName}
+          challengeDetails={tasmeeDetails}
+        />
+      )}
 
       {/* Floating Menu - simplified or kept for secondary actions */}
       <div className="max-w-3xl mx-auto relative z-10 min-h-screen">
@@ -480,6 +512,9 @@ export default function App() {
             onChallengesClick={() => setShowChallenges(true)}
             onDuaaClick={() => setShowDuaaJournal(true)}
             onBack={() => setActiveTab('home')}
+            themeMode={themeMode}
+            onThemeToggle={toggleTheme}
+            onLogout={handleLogout}
           />
         )}
       </div>

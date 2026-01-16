@@ -629,6 +629,15 @@ export async function updateKhatmaProgress(khatmaId: string, surahNum: number, a
   if (error) console.error('Update khatma error:', error);
 }
 
+export async function deleteKhatma(khatmaId: string) {
+  const { error } = await supabase
+    .from('quran_khatmas')
+    .delete()
+    .eq('id', khatmaId);
+
+  if (error) console.error('Error deleting khatma:', error);
+}
+
 // =====================================================
 // USER STREAK & LOGINS
 // =====================================================
@@ -642,7 +651,6 @@ export async function updateUserStreak(userId: string) {
       .single();
 
     if (fetchError) throw fetchError;
-
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
@@ -688,4 +696,92 @@ export async function updateUserStreak(userId: string) {
     console.error('Error updating streak:', error);
     return null;
   }
+}
+
+// =====================================================
+// SHARED KHATMA
+// =====================================================
+
+export async function getActiveSharedKhatma(userId: string) {
+  const { data, error } = await supabase
+    .from('shared_khatmas')
+    .select('*, partner:partner_id(*), user:user_id(*)')
+    .or(`user_id.eq.${userId},partner_id.eq.${userId}`)
+    .eq('status', 'active')
+    .eq('is_current', true)
+    .order('start_date', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error('Error getting shared khatma:', error);
+    return null;
+  }
+  return data;
+}
+
+export async function createSharedKhatma(userId: string, partnerId: string, days: number = 30) {
+  // Archive old ones first
+  await supabase
+    .from('shared_khatmas')
+    .update({ status: 'archived', is_current: false })
+    .or(`user_id.eq.${userId},partner_id.eq.${userId}`)
+    .eq('status', 'active');
+
+  const startDate = new Date();
+  const endDate = new Date();
+  endDate.setDate(startDate.getDate() + days);
+
+  const { data, error } = await supabase
+    .from('shared_khatmas')
+    .insert([{
+      user_id: userId,
+      partner_id: partnerId,
+      status: 'active',
+      is_current: true,
+      current_surah: 1,
+      current_ayah: 1,
+      current_page: 1,
+      current_part: 1,
+      start_date: startDate.toISOString(),
+      end_date: endDate.toISOString(),
+      title: 'ختمة مشتركة'
+    }])
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error creating shared khatma:', error);
+    throw error;
+  }
+  return data;
+}
+
+export async function updateSharedKhatmaProgress(
+  khatmaId: string,
+  userId: string,
+  surah: number,
+  ayah: number,
+  page: number
+) {
+  const { error } = await supabase
+    .from('shared_khatmas')
+    .update({
+      current_surah: surah,
+      current_ayah: ayah,
+      current_page: page,
+      last_updated_by: userId
+    })
+    .eq('id', khatmaId);
+
+  if (error) console.error('Error updating shared khatma:', error);
+}
+
+export async function deleteSharedKhatma(khatmaId: string) {
+  const { error } = await supabase
+    .from('shared_khatmas')
+    .delete()
+    .eq('id', khatmaId);
+
+  if (error) console.error('Error deleting shared khatma:', error);
 }

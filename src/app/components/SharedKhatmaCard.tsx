@@ -1,0 +1,144 @@
+import { useState } from 'react';
+import { BookOpen, Calendar, Trash2, Edit2, CheckCircle2, Award, User } from 'lucide-react';
+import { motion } from 'motion/react';
+import { deleteSharedKhatma } from '../utils/db';
+import { toast } from 'sonner';
+
+interface SharedKhatmaCardProps {
+    currentUserId: string;
+    partner: any | null;
+    activeKhatma: any | null; // Shared Khatma Object
+    onStartKhatma: () => void;
+    onRefresh: () => void;
+}
+
+export function SharedKhatmaCard({ currentUserId, partner, activeKhatma, onStartKhatma, onRefresh }: SharedKhatmaCardProps) {
+    const [loading, setLoading] = useState(false);
+
+    const handleDelete = async () => {
+        if (!activeKhatma) return;
+        if (confirm('هل أنت متأكد من حذف الختمة المشتركة؟')) {
+            setLoading(true);
+            await deleteSharedKhatma(activeKhatma.id);
+            setLoading(false);
+            toast.success('تم حذف الختمة');
+            onRefresh();
+        }
+    };
+
+    const getDaysLeft = () => {
+        if (!activeKhatma?.end_date) return 0;
+        const end = new Date(activeKhatma.end_date);
+        const now = new Date();
+        const diff = end.getTime() - now.getTime();
+        return Math.ceil(diff / (1000 * 3600 * 24));
+    };
+
+    const getPercentage = () => {
+        if (!activeKhatma) return 0;
+        // Current page out of 604
+        const page = activeKhatma.current_page || 1;
+        return Math.round((page / 604) * 100);
+    };
+
+    const formattedPercentage = getPercentage();
+    const dailyGoal = Math.ceil(604 / 30); // Simplified default or calculate based on days left
+
+    if (!activeKhatma) {
+        // Empty State - Start New Khatma
+        return (
+            <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 rounded-[2rem] p-6 shadow-sm relative overflow-hidden flex flex-col items-center justify-center text-center h-full min-h-[220px]">
+                <Calendar className="w-10 h-10 text-emerald-500 mb-3" />
+                <h3 className="font-bold text-slate-800 dark:text-white mb-4 text-lg">ابدأ ختمة جديدة</h3>
+
+                {partner ? (
+                    <button
+                        onClick={onStartKhatma}
+                        className="px-8 py-3 bg-emerald-600 text-white rounded-xl font-bold text-sm shadow-md hover:bg-emerald-700 transition-all flex items-center gap-2"
+                    >
+                        <BookOpen className="w-4 h-4" />
+                        <span>تخطيط ختمة مشتركة</span>
+                    </button>
+                ) : (
+                    <div className="text-slate-400 text-sm font-bold">اربط شريكك للبدء بختمة مشتركة</div>
+                )}
+            </div>
+        );
+    }
+
+    // Active Shared Khatma State
+    return (
+        <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 rounded-[2rem] p-6 shadow-sm relative overflow-hidden h-full">
+            {/* Header */}
+            <div className="flex items-start justify-between mb-6">
+                <div>
+                    <h3 className="font-bold text-slate-800 dark:text-white text-lg">الختمة المشتركة</h3>
+                    <div className="flex items-center gap-2 mt-1">
+                        <span className="px-2 py-0.5 rounded-lg text-[10px] font-black text-blue-600 bg-blue-50 dark:bg-blue-500/10">
+                            مواظب عالدرب
+                        </span>
+                        <span className="text-slate-400 text-xs font-bold">• باقي {getDaysLeft()} يوم</span>
+                    </div>
+                </div>
+                <div className="w-10 h-10 rounded-full bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-500">
+                    <BookOpen className="w-5 h-5" />
+                </div>
+            </div>
+
+            {/* Partner Info Row */}
+            <div className="flex items-center gap-3 mb-6 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-2xl">
+                <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center overflow-hidden border-2 border-white dark:border-slate-700 shadow-sm">
+                    {partner?.avatar_url ? (
+                        <img src={partner.avatar_url} alt={partner.name} className="w-full h-full object-cover" />
+                    ) : (
+                        <User className="w-5 h-5 text-indigo-500" />
+                    )}
+                </div>
+                <div className="flex-1">
+                    <h4 className="font-bold text-slate-800 dark:text-white text-sm">{partner?.name || 'الشريك'}</h4>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+                        <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                            واصلين ص {activeKhatma.current_page || 1}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            {/* Stats Grid */}
+            <div className="flex items-center gap-4 mb-5">
+                <div className="flex-1 bg-slate-50 dark:bg-slate-800 p-3 rounded-2xl text-center">
+                    <span className="block text-xl font-bold text-emerald-600">{dailyGoal}</span>
+                    <span className="text-[10px] text-slate-500 font-bold">اليومي</span>
+                </div>
+                <div className="flex-1 bg-slate-50 dark:bg-slate-800 p-3 rounded-2xl text-center">
+                    <span className="block text-xl font-bold text-slate-800 dark:text-white">{formattedPercentage}%</span>
+                    <span className="text-[10px] text-slate-500 font-bold">الإنجاز</span>
+                </div>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="h-2.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden mb-6">
+                <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${formattedPercentage}%` }}
+                    className="h-full rounded-full bg-emerald-500"
+                />
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center gap-3">
+                <button className="flex-1 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl font-bold text-xs hover:scale-[1.02] transition-transform">
+                    تعديل
+                </button>
+                <button
+                    onClick={handleDelete}
+                    disabled={loading}
+                    className="w-10 h-10 flex items-center justify-center bg-red-50 dark:bg-red-900/10 text-red-500 rounded-xl hover:bg-red-100 transition-colors"
+                >
+                    <Trash2 className="w-4 h-4" />
+                </button>
+            </div>
+        </div>
+    );
+}
