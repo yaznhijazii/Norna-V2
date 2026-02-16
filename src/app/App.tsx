@@ -3,6 +3,7 @@ import { PlayerPage } from './pages/PlayerPage';
 import { QuranPage } from './pages/QuranPage';
 import { AzkarPage } from './pages/AzkarPage';
 import { PartnerPage } from './pages/PartnerPage';
+import { QiblaPage } from './pages/QiblaPage';
 import { BottomNavigation } from './components/BottomNavigation';
 import { DuaaJournal } from './components/DuaaJournal';
 import { FloatingMenu } from './components/FloatingMenu';
@@ -25,6 +26,8 @@ import { useNotifications } from './hooks/useNotifications';
 import { usePartnerActivity } from './hooks/usePartnerActivity';
 import { usePushNotifications } from './hooks/usePushNotifications';
 import { useGiftNotifications } from './hooks/useGiftNotifications';
+import { useRamadan } from './hooks/useRamadan';
+import { motion } from 'motion/react';
 
 const logoImage = 'https://raw.githubusercontent.com/yaznhijazii/personalsfiles/refs/heads/main/norna.png';
 
@@ -35,6 +38,7 @@ interface User {
 }
 
 export default function App() {
+  const { isRamadan } = useRamadan();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('home');
@@ -291,6 +295,7 @@ export default function App() {
     const nextTheme = themes[(currentIndex + 1) % themes.length];
     setThemeMode(nextTheme);
     localStorage.setItem('themeMode', nextTheme);
+    window.dispatchEvent(new Event('themeChange'));
   };
 
   // Challenges Logic
@@ -387,9 +392,18 @@ export default function App() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-primary/5 to-background">
-        <div className="text-center">
-          <p className="animate-pulse">Loading...</p>
+      <div className="min-h-screen flex items-center justify-center bg-[#fdfbf7] dark:bg-slate-950">
+        <div className="flex flex-col items-center">
+          <div className="mb-6">
+            <img
+              src={logoImage}
+              alt="Nooruna Logo"
+              className="w-24 h-24 opacity-80"
+            />
+          </div>
+          <h1 className="font-amiri text-4xl font-bold text-slate-800 dark:text-white mb-2">
+            نورنا
+          </h1>
         </div>
       </div>
     );
@@ -399,11 +413,9 @@ export default function App() {
     return <LoginScreen onLogin={handleLogin} />;
   }
 
-  const timeConfig = timeOfDayConfig[activeTimeOfDay];
-
   return (
     <div
-      className={`min-h-screen relative overflow-hidden premium-bg-layout`}
+      className={`min-h-screen relative overflow-hidden premium-bg-layout ${isRamadan ? 'ramadan-mode' : ''}`}
       style={{
         fontFamily: "'IBM Plex Sans Arabic', sans-serif",
         direction: 'rtl'
@@ -411,13 +423,16 @@ export default function App() {
     >
       {/* Premium Background Layer */}
       <div className="mesh-gradient">
-        <div className="mesh-sphere w-[80%] h-[80%] -top-[20%] -left-[10%] bg-indigo-500/20"></div>
-        <div className="mesh-sphere w-[70%] h-[70%] -bottom-[10%] -right-[10%] bg-purple-500/20 animate-[meshFloat_25s_infinite_alternate-reverse]"></div>
-        <div className="mesh-sphere w-[60%] h-[60%] top-[20%] left-[30%] bg-emerald-500/10 animate-[meshFloat_30s_infinite_alternate]"></div>
+        <div className={`mesh-sphere w-[80%] h-[80%] -top-[20%] -left-[10%] ${isRamadan ? 'bg-amber-500/20' : 'bg-indigo-500/20'}`}></div>
+        <div className={`mesh-sphere w-[70%] h-[70%] -bottom-[10%] -right-[10%] ${isRamadan ? 'bg-purple-500/20' : 'bg-purple-500/20'} animate-[meshFloat_25s_infinite_alternate-reverse]`}></div>
+        <div className={`mesh-sphere w-[60%] h-[60%] top-[20%] left-[30%] ${isRamadan ? 'bg-amber-200/10' : 'bg-emerald-500/10'} animate-[meshFloat_30s_infinite_alternate]`}></div>
       </div>
 
       {/* Noise Grain for High-End Texture */}
       <div className="grain-overlay"></div>
+
+      {/* Global Ramadan Decorations */}
+      <RamadanDecorations isRamadan={isRamadan} />
 
       <Toaster position="top-center" richColors closeButton />
 
@@ -496,6 +511,7 @@ export default function App() {
             partnerName={partnerName}
             onPartnerStatsClick={() => setActiveTab('partner')}
             onSettingsClick={() => setShowSettings(true)}
+            onQiblaClick={() => setActiveTab('qibla')}
             setShowChallenges={setShowChallenges}
             activeChallenges={activeChallenges}
           />
@@ -503,6 +519,7 @@ export default function App() {
         {activeTab === 'player' && <PlayerPage />}
         {activeTab === 'quran' && <QuranPage initialSurah={navInitialSurah?.name} />}
         {activeTab === 'azkar' && <AzkarPage initialType={navInitialAzkar} />}
+        {activeTab === 'qibla' && <QiblaPage onBack={() => setActiveTab('home')} />}
         {activeTab === 'partner' && (
           <PartnerPage
             currentUserId={currentUser.userId}
@@ -527,3 +544,79 @@ export default function App() {
     </div >
   );
 }
+function RamadanDecorations({ isRamadan }: { isRamadan: boolean }) {
+  if (!isRamadan) return null;
+
+  return (
+    <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+      {/* Stars in the background */}
+      {[...Array(12)].map((_, i) => (
+        <motion.div
+          key={i}
+          initial={{ opacity: 0 }}
+          animate={{
+            opacity: [0.1, 0.4, 0.1],
+            scale: [1, 1.2, 1]
+          }}
+          transition={{
+            duration: 3 + Math.random() * 3,
+            repeat: Infinity,
+            delay: Math.random() * 5
+          }}
+          className="absolute bg-amber-200 rounded-full blur-[1px]"
+          style={{
+            width: Math.random() * 3 + 1 + 'px',
+            height: Math.random() * 3 + 1 + 'px',
+            top: Math.random() * 100 + '%',
+            left: Math.random() * 100 + '%',
+          }}
+        />
+      ))}
+
+      {/* Main Lantern (Left) */}
+      <motion.div
+        animate={{
+          y: [0, 20, 0],
+          rotate: [-2, 2, -2]
+        }}
+        transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
+        className="absolute -top-10 left-[10%] text-amber-500/20 drop-shadow-[0_0_15px_rgba(245,158,11,0.3)]"
+      >
+        <svg width="60" height="120" viewBox="0 0 60 120" fill="currentColor">
+          <path d="M30 0V15M15 15H45L40 25H20L15 15ZM10 25L0 45H60L50 25H10ZM0 45L10 90H50L60 45H0ZM10 90L15 105H45L50 90H10ZM25 105V120M35 105V120" />
+          <rect x="25" y="50" width="10" height="30" rx="2" fill="white" opacity="0.3" />
+        </svg>
+      </motion.div>
+
+      {/* Small Lantern (Right) */}
+      <motion.div
+        animate={{
+          y: [0, 15, 0],
+          rotate: [2, -2, 2]
+        }}
+        transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
+        className="absolute -top-5 right-[15%] text-indigo-400/20 drop-shadow-[0_0_10px_rgba(129,140,248,0.2)]"
+      >
+        <svg width="45" height="90" viewBox="0 0 45 90" fill="currentColor">
+          <path d="M22.5 0V10M12 10H33L30 18H15L12 10ZM5 18L0 35H45L40 18H5ZM0 35L8 70H37L45 35H0ZM10 70L15 80H30L35 70H10Z" />
+          <circle cx="22.5" cy="45" r="5" fill="white" opacity="0.2" />
+        </svg>
+      </motion.div>
+
+      {/* Floating Fanous (Bottom Left) */}
+      <motion.div
+        animate={{
+          y: [0, -10, 0],
+          x: [0, 5, 0]
+        }}
+        transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
+        className="absolute bottom-[20%] left-[5%] text-amber-600/10"
+      >
+        <svg width="40" height="70" viewBox="0 0 40 70" fill="currentColor">
+          <path d="M20 0L25 10H15L20 0ZM10 10H30L35 25H5L10 10ZM5 25L10 55H30L35 25H5ZM12 55L15 65H25L28 55H12Z" />
+        </svg>
+      </motion.div>
+    </div>
+  );
+}
+

@@ -11,7 +11,7 @@ interface Surah {
 }
 
 export function AudioCenter() {
-  const [activeTab, setActiveTab] = useState<'podcast' | 'radio' | 'quran'>('podcast');
+  const [activeTab, setActiveTab] = useState<'radio' | 'podcast' | 'quran'>('radio');
   const [surahs, setSurahs] = useState<Surah[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSurah, setSelectedSurah] = useState<Surah | null>(null);
@@ -96,8 +96,8 @@ export function AudioCenter() {
   };
 
   const tabs = [
-    { id: 'podcast', label: 'بودكاست', icon: Headphones, color: 'purple', gradient: 'from-purple-500 to-indigo-600' },
     { id: 'radio', label: 'إذاعة', icon: Radio, color: 'emerald', gradient: 'from-emerald-500 to-teal-600' },
+    { id: 'podcast', label: 'بودكاست', icon: Headphones, color: 'purple', gradient: 'from-purple-500 to-indigo-600' },
     { id: 'quran', label: 'قرآن كـريـم', icon: BookOpen, color: 'blue', gradient: 'from-blue-500 to-indigo-600' }
   ] as const;
 

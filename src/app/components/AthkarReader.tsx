@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Sun, Moon, X, Loader2, Check, RotateCcw, Heart, Star, Sparkles, HandHeart, Plus, CheckCircle2 } from 'lucide-react';
+import { Sun, Moon, X, Loader2, Check, RotateCcw, Heart, Star, Sparkles, HandHeart, Plus, CheckCircle2, Calculator } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { getAthkarProgress, updateAthkarProgress } from '../utils/db';
 import { useTimeOfDay } from '../hooks/useTimeOfDay';
 import { fetchJordanHolidays, Holiday } from '../utils/holidays';
+import { TasbihPage } from '../pages/TasbihPage';
 
 interface Zekr {
   zekr: string;
@@ -11,7 +12,7 @@ interface Zekr {
   bless: string;
 }
 
-type AthkarType = 'morning' | 'evening' | 'israa_miraj';
+type AthkarType = 'morning' | 'evening' | 'israa_miraj' | 'tasbih';
 
 interface AthkarReaderProps {
   initialType?: AthkarType | null;
@@ -157,7 +158,14 @@ export function AthkarReader({ initialType }: AthkarReaderProps) {
   };
 
   const handleReset = () => setProgress({});
-  const close = () => { setSelectedType(null); setAthkar([]); setProgress({}); };
+  const close = () => {
+    if (selectedType === 'tasbih') {
+      // Save tasbih count if needed (handled inside TasbihPage usually)
+    }
+    setSelectedType(null);
+    setAthkar([]);
+    setProgress({});
+  };
 
   const getTotalProgress = () => {
     if (!Array.isArray(athkar) || athkar.length === 0) return { total: 0, completed: 0, percentage: 0 };
@@ -204,6 +212,21 @@ export function AthkarReader({ initialType }: AthkarReaderProps) {
       btnColor: 'bg-slate-900 dark:bg-white text-white dark:text-slate-900',
       barColor: 'bg-indigo-500',
       hoverFill: 'bg-indigo-600/5'
+    },
+    {
+      id: 'tasbih',
+      label: 'المسبحة الإلكترونية',
+      desc: 'اجعل لسانك رطباً بذكر الله في كل وقت ومكان عبر المسبحة الذكية.',
+      icon: Calculator,
+      color: 'emerald',
+      done: false,
+      badge: 'مفتوح',
+      isRecommended: false,
+      iconBg: 'bg-emerald-500',
+      iconColor: 'text-white',
+      btnColor: 'bg-emerald-600 text-white',
+      barColor: 'bg-emerald-400',
+      hoverFill: 'bg-emerald-500/5'
     }
   ];
 
@@ -321,7 +344,26 @@ export function AthkarReader({ initialType }: AthkarReaderProps) {
 
       {/* Reader Modal */}
       <AnimatePresence>
-        {selectedType && (
+        {selectedType && selectedType === 'tasbih' && (
+          <div className="fixed inset-0 bg-black/80 z-[9990] flex items-center justify-center">
+            <motion.div
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="bg-slate-950 w-full h-full relative"
+            >
+              <button
+                onClick={close}
+                className="absolute top-6 left-6 z-[10000] p-3 bg-white/10 hover:bg-white/20 rounded-2xl transition-colors text-white"
+              >
+                <X className="w-6 h-6" />
+              </button>
+              <TasbihPage />
+            </motion.div>
+          </div>
+        )}
+
+        {selectedType && selectedType !== 'tasbih' && (
           <div className="fixed inset-0 bg-black/60 z-[9990] flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden border border-slate-200 dark:border-white/5">
               <div className={`${selectedType === 'morning' ? 'bg-amber-500' : selectedType === 'evening' ? 'bg-indigo-600' : 'bg-slate-900'} text-white p-7 relative overflow-hidden`}>

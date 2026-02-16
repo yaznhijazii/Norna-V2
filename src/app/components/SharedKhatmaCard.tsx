@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { BookOpen, Calendar, Trash2, Edit2, CheckCircle2, Award, User } from 'lucide-react';
+import { BookOpen, Calendar, Trash2, Edit2, CheckCircle2, Award, User, BrainCircuit } from 'lucide-react';
 import { motion } from 'motion/react';
 import { deleteSharedKhatma } from '../utils/db';
 import { toast } from 'sonner';
+import { useRamadan } from '../hooks/useRamadan';
 
 interface SharedKhatmaCardProps {
     currentUserId: string;
@@ -42,7 +43,30 @@ export function SharedKhatmaCard({ currentUserId, partner, activeKhatma, onStart
     };
 
     const formattedPercentage = getPercentage();
-    const dailyGoal = Math.ceil(604 / 30); // Simplified default or calculate based on days left
+
+    // Smart Daily Goal Logic
+    const getSmartStats = () => {
+        if (!activeKhatma?.end_date || !activeKhatma?.start_date) return { dailyGoal: Math.ceil(604 / 30), adjustment: 0 };
+
+        const end = new Date(activeKhatma.end_date).getTime();
+        const start = new Date(activeKhatma.start_date).getTime();
+        const now = new Date().getTime();
+
+        const totalDays = Math.max(1, (end - start) / (1000 * 3600 * 24));
+        const daysLeft = Math.max(1, Math.ceil((end - now) / (1000 * 3600 * 24)));
+
+        const currentPage = activeKhatma.current_page || 0;
+        const remainingPages = 604 - currentPage;
+
+        const dailyGoal = Math.ceil(remainingPages / daysLeft);
+        const originalGoal = Math.ceil(604 / totalDays);
+
+        const adjustment = dailyGoal > originalGoal ? dailyGoal - originalGoal : 0;
+
+        return { dailyGoal: dailyGoal > 0 ? dailyGoal : 0, adjustment };
+    };
+
+    const { dailyGoal, adjustment } = getSmartStats();
 
     if (!activeKhatma) {
         // Empty State - Start New Khatma
@@ -72,7 +96,13 @@ export function SharedKhatmaCard({ currentUserId, partner, activeKhatma, onStart
             {/* Header */}
             <div className="flex items-start justify-between mb-6">
                 <div>
-                    <h3 className="font-bold text-slate-800 dark:text-white text-lg">الختمة المشتركة</h3>
+                    <div className="flex items-center gap-2">
+                        <h3 className="font-bold text-slate-800 dark:text-white text-lg">{activeKhatma.title || 'الختمة المشتركة'}</h3>
+                        {adjustment > 0 && (
+                            <BrainCircuit className="w-4 h-4 text-emerald-500 animate-pulse" />
+                        )}
+                        <RamadanBadge />
+                    </div>
                     <div className="flex items-center gap-2 mt-1">
                         <span className="px-2 py-0.5 rounded-lg text-[10px] font-black text-blue-600 bg-blue-50 dark:bg-blue-500/10">
                             مواظب عالدرب
@@ -80,36 +110,42 @@ export function SharedKhatmaCard({ currentUserId, partner, activeKhatma, onStart
                         <span className="text-slate-400 text-xs font-bold">• باقي {getDaysLeft()} يوم</span>
                     </div>
                 </div>
-                <div className="w-10 h-10 rounded-full bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-500">
-                    <BookOpen className="w-5 h-5" />
+                <div className="w-10 h-10 rounded-full bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-500 shadow-sm border border-emerald-100/50">
+                    <Award className="w-5 h-5" />
                 </div>
             </div>
 
             {/* Partner Info Row */}
-            <div className="flex items-center gap-3 mb-6 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-2xl">
-                <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center overflow-hidden border-2 border-white dark:border-slate-700 shadow-sm">
+            <div className="flex items-center gap-4 mb-6 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-3xl border border-dashed border-slate-200 dark:border-white/5">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-100 flex items-center justify-center overflow-hidden border-2 border-white dark:border-slate-700 shadow-sm shrink-0">
                     {partner?.avatar_url ? (
                         <img src={partner.avatar_url} alt={partner.name} className="w-full h-full object-cover" />
                     ) : (
-                        <User className="w-5 h-5 text-indigo-500" />
+                        <User className="w-6 h-6 text-indigo-500" />
                     )}
                 </div>
                 <div className="flex-1">
-                    <h4 className="font-bold text-slate-800 dark:text-white text-sm">{partner?.name || 'الشريك'}</h4>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                        <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-                        <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
-                            واصلين ص {activeKhatma.current_page || 1}
-                        </span>
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">آخر قراءة</div>
+                    <div className="flex items-center justify-between">
+                        <h4 className="font-bold text-slate-800 dark:text-white text-base">وصلت عند الصفحة {activeKhatma.current_page?.toLocaleString('ar-EG') || '١'}</h4>
+                        <div className="flex items-center gap-1 bg-emerald-100 dark:bg-emerald-900/30 px-2 py-0.5 rounded-lg">
+                            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
+                            <span className="text-[9px] font-black text-emerald-700 dark:text-emerald-400">محدّث</span>
+                        </div>
                     </div>
                 </div>
             </div>
 
             {/* Stats Grid */}
             <div className="flex items-center gap-4 mb-5">
-                <div className="flex-1 bg-slate-50 dark:bg-slate-800 p-3 rounded-2xl text-center">
+                <div className="flex-1 bg-slate-50 dark:bg-slate-800 p-3 rounded-2xl text-center relative">
                     <span className="block text-xl font-bold text-emerald-600">{dailyGoal}</span>
-                    <span className="text-[10px] text-slate-500 font-bold">اليومي</span>
+                    <span className="text-[10px] text-slate-500 font-bold">اليومي (معدل)</span>
+                    {adjustment > 0 && (
+                        <div className="absolute -top-2 -right-2 bg-amber-100 text-amber-700 text-[9px] px-1.5 py-0.5 rounded-full font-bold shadow-sm border border-amber-200">
+                            +{adjustment}
+                        </div>
+                    )}
                 </div>
                 <div className="flex-1 bg-slate-50 dark:bg-slate-800 p-3 rounded-2xl text-center">
                     <span className="block text-xl font-bold text-slate-800 dark:text-white">{formattedPercentage}%</span>
@@ -140,5 +176,16 @@ export function SharedKhatmaCard({ currentUserId, partner, activeKhatma, onStart
                 </button>
             </div>
         </div>
+    );
+}
+
+function RamadanBadge() {
+    const { isRamadan } = useRamadan();
+    if (!isRamadan) return null;
+    return (
+        <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border border-amber-200/50 flex items-center gap-1 shadow-sm">
+            <span className="w-1 h-1 bg-amber-500 rounded-full animate-pulse"></span>
+            هدية رمضان
+        </span>
     );
 }

@@ -3,6 +3,7 @@ import { InteractiveTimeline } from '../components/InteractiveTimeline';
 import { DailyDuaaCard } from '../components/DailyDuaaCard';
 import { ChallengesCard, UserChallengeData } from '../components/ChallengesCard';
 import { UpcomingEvents } from '../components/UpcomingEvents';
+// import { RamadanCountdown } from '../components/RamadanCountdown';
 
 interface HomePageProps {
     currentUser: any;
@@ -10,6 +11,7 @@ interface HomePageProps {
     partnerName?: string;
     onPartnerStatsClick: () => void;
     onSettingsClick: () => void;
+    onQiblaClick: () => void;
     setShowChallenges: (show: boolean) => void;
     activeChallenges: UserChallengeData[];
 }
@@ -20,6 +22,7 @@ export function HomePage({
     partnerName,
     onPartnerStatsClick,
     onSettingsClick,
+    onQiblaClick,
     setShowChallenges,
     activeChallenges
 }: HomePageProps) {
@@ -31,6 +34,7 @@ export function HomePage({
                 partnerName={partnerName}
                 onPartnerStatsClick={onPartnerStatsClick}
                 onSettingsClick={onSettingsClick}
+                onQiblaClick={onQiblaClick}
                 hasPartner={!!partnerId}
             />
 

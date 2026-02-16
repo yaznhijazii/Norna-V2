@@ -66,11 +66,22 @@ export function SettingsModal({ isOpen, onClose, themeMode, onThemeToggle, onLog
   const [hasPartner, setHasPartner] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  const [isRamadanMode, setIsRamadanMode] = useState(false);
+
   useEffect(() => {
     if (isOpen) {
       loadAllSettings();
+      const savedRamadan = localStorage.getItem('ramadanMode');
+      setIsRamadanMode(savedRamadan === 'true');
     }
   }, [isOpen]);
+
+  const toggleRamadanMode = () => {
+    const newVal = !isRamadanMode;
+    setIsRamadanMode(newVal);
+    localStorage.setItem('ramadanMode', newVal.toString());
+    window.dispatchEvent(new Event('ramadanModeChange'));
+  };
 
   const loadAllSettings = async () => {
     const userStr = localStorage.getItem('nooruna_user');
@@ -900,6 +911,35 @@ export function SettingsModal({ isOpen, onClose, themeMode, onThemeToggle, onLog
                           </div>
                         </button>
                       ))}
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-2xl overflow-hidden shadow-sm border border-slate-100">
+                    <div className="p-4 border-b border-slate-50 bg-slate-50/30">
+                      <h3 className="font-bold text-xs text-slate-700 flex items-center gap-2">
+                        <Moon className="w-3.5 h-3.5 text-indigo-500" />
+                        <span>وضع رمضان</span>
+                      </h3>
+                    </div>
+
+                    <div className="p-4 flex items-center justify-between">
+                      <div className="flex-1 text-right">
+                        <p className="text-[11px] font-bold text-slate-900">تفعيل مظهر رمضان</p>
+                        <p className="text-[9px] text-slate-400 mt-0.5">يُظهر زينة رمضان، العداد التنازلي، والسمات الذهبية</p>
+                      </div>
+
+                      <button
+                        onClick={toggleRamadanMode}
+                        className={`
+                          w-12 h-6 rounded-full transition-all duration-300 relative
+                          ${isRamadanMode ? 'bg-amber-500' : 'bg-slate-200'}
+                        `}
+                      >
+                        <div className={`
+                          absolute top-1 w-4 h-4 rounded-full bg-white transition-all duration-300 shadow-sm
+                          ${isRamadanMode ? 'left-1' : 'left-7'}
+                        `} />
+                      </button>
                     </div>
                   </div>
 
