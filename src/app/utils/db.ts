@@ -546,7 +546,7 @@ export async function getGiftReaction(giftId: string) {
 // QURAN BOOKMARKS & KHATMA
 // =====================================================
 
-export async function saveQuranBookmark(userId: string, surahNum: number, surahName: string, ayahNum: number) {
+export async function saveQuranBookmark(userId: string, surahNum: number, surahName: string, ayahNum: number, pageNum?: number) {
   const { error } = await supabase
     .from('quran_bookmarks')
     .upsert({
@@ -554,6 +554,7 @@ export async function saveQuranBookmark(userId: string, surahNum: number, surahN
       surah_number: surahNum,
       surah_name: surahName,
       ayah_number: ayahNum,
+      page_number: pageNum,
       updated_at: new Date().toISOString()
     });
 
@@ -617,12 +618,13 @@ export async function createNewKhatma(userId: string, targetDays: number = 30) {
   return data;
 }
 
-export async function updateKhatmaProgress(khatmaId: string, surahNum: number, ayahNum: number) {
+export async function updateKhatmaProgress(khatmaId: string, surahNum: number, ayahNum: number, pageNum?: number) {
   const { error } = await supabase
     .from('quran_khatmas')
     .update({
       current_surah: surahNum,
-      current_ayah: ayahNum
+      current_ayah: ayahNum,
+      current_page: pageNum
     })
     .eq('id', khatmaId);
 

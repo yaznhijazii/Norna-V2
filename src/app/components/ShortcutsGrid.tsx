@@ -5,18 +5,18 @@ import { MouseEvent, useState } from 'react';
 const TasbihIcon = ({ className }: { className?: string }) => (
     <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
         {/* Horizontal string */}
-        <path d="M4 12H18" stroke="currentColor" strokeWidth="0.5" strokeDasharray="1 1" opacity="0.4" />
+        <path d="M5.5 12H19.5" stroke="currentColor" strokeWidth="0.5" strokeDasharray="1 1" opacity="0.4" />
 
-        {/* Beads in a horizontal line */}
-        <circle cx="4" cy="12" r="2.2" fill="currentColor" />
-        <circle cx="8.5" cy="12" r="2.2" fill="currentColor" />
-        <circle cx="13" cy="12" r="2.2" fill="currentColor" />
-        <circle cx="17.5" cy="12" r="2.5" fill="currentColor" />
+        {/* Beads in a horizontal line - Perfectly Centered */}
+        <circle cx="5.5" cy="12" r="2.2" fill="currentColor" />
+        <circle cx="10" cy="12" r="2.2" fill="currentColor" />
+        <circle cx="14.5" cy="12" r="2.2" fill="currentColor" />
+        <circle cx="19" cy="12" r="2.5" fill="currentColor" />
 
         {/* Side Tassel */}
-        <path d="M17.5 12V18" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-        <path d="M15.5 20C15.5 19 16.5 18.5 17.5 18.5C18.5 18.5 19.5 19 19.5 20" stroke="currentColor" strokeWidth="1" />
-        <path d="M16.5 20V23M17.5 20V24M18.5 20V23" stroke="currentColor" strokeWidth="0.8" strokeLinecap="round" />
+        <path d="M19 12V18" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+        <path d="M17 20C17 19 18 18.5 19 18.5C20 18.5 21 19 21 20" stroke="currentColor" strokeWidth="1" />
+        <path d="M18 20V23M19 20V24M20 20V23" stroke="currentColor" strokeWidth="0.8" strokeLinecap="round" />
     </svg>
 );
 
@@ -36,52 +36,59 @@ function ShortcutCard({ title, subtitle, icon: Icon, color, onClick, delay = 0, 
 
     const colorConfigs: Record<string, {
         gradient: string,
+        iconBox: string,
         iconColor: string,
-        shadow: string,
         glow: string,
-        border: string
+        border: string,
+        hoverBg: string
     }> = {
         amber: {
-            gradient: 'from-amber-500/5 to-transparent',
+            gradient: 'from-amber-500/10 to-transparent',
+            iconBox: 'bg-amber-500/10 border-amber-500/20',
             iconColor: 'text-amber-500',
-            shadow: 'group-hover:shadow-amber-500/20',
-            glow: 'rgba(245, 158, 11, 0.15)',
-            border: 'group-hover:border-amber-500/30'
+            glow: 'rgba(245, 158, 11, 0.12)',
+            border: 'group-hover:border-amber-500/30',
+            hoverBg: 'dark:group-hover:bg-amber-500/[0.03]'
         },
         emerald: {
-            gradient: 'from-emerald-500/5 to-transparent',
+            gradient: 'from-emerald-500/10 to-transparent',
+            iconBox: 'bg-emerald-500/10 border-emerald-500/20',
             iconColor: 'text-emerald-500',
-            shadow: 'group-hover:shadow-emerald-500/20',
-            glow: 'rgba(16, 185, 129, 0.15)',
-            border: 'group-hover:border-emerald-500/30'
+            glow: 'rgba(16, 185, 129, 0.12)',
+            border: 'group-hover:border-emerald-500/30',
+            hoverBg: 'dark:group-hover:bg-emerald-500/[0.03]'
         },
         indigo: {
-            gradient: 'from-indigo-500/5 to-transparent',
+            gradient: 'from-indigo-500/10 to-transparent',
+            iconBox: 'bg-indigo-500/10 border-indigo-500/20',
             iconColor: 'text-indigo-500',
-            shadow: 'group-hover:shadow-indigo-500/20',
-            glow: 'rgba(99, 102, 241, 0.15)',
-            border: 'group-hover:border-indigo-500/30'
+            glow: 'rgba(99, 102, 241, 0.12)',
+            border: 'group-hover:border-indigo-500/30',
+            hoverBg: 'dark:group-hover:bg-indigo-500/[0.03]'
         },
         rose: {
-            gradient: 'from-rose-500/5 to-transparent',
+            gradient: 'from-rose-500/10 to-transparent',
+            iconBox: 'bg-rose-500/10 border-rose-500/20',
             iconColor: 'text-rose-500',
-            shadow: 'group-hover:shadow-rose-500/20',
-            glow: 'rgba(244, 63, 94, 0.15)',
-            border: 'group-hover:border-rose-500/30'
+            glow: 'rgba(244, 63, 94, 0.12)',
+            border: 'group-hover:border-rose-500/30',
+            hoverBg: 'dark:group-hover:bg-rose-500/[0.03]'
         },
         violet: {
-            gradient: 'from-violet-500/5 to-transparent',
+            gradient: 'from-violet-500/10 to-transparent',
+            iconBox: 'bg-violet-500/10 border-violet-500/20',
             iconColor: 'text-violet-500',
-            shadow: 'group-hover:shadow-violet-500/20',
-            glow: 'rgba(139, 92, 246, 0.15)',
-            border: 'group-hover:border-violet-500/30'
+            glow: 'rgba(139, 92, 246, 0.12)',
+            border: 'group-hover:border-violet-500/30',
+            hoverBg: 'dark:group-hover:bg-violet-500/[0.03]'
         },
         slate: {
-            gradient: 'from-slate-500/5 to-transparent',
+            gradient: 'from-slate-500/10 to-transparent',
+            iconBox: 'bg-slate-500/10 border-slate-500/20',
             iconColor: 'text-slate-500',
-            shadow: 'group-hover:shadow-slate-500/20',
-            glow: 'rgba(71, 85, 105, 0.15)',
-            border: 'group-hover:border-slate-500/30'
+            glow: 'rgba(71, 85, 105, 0.12)',
+            border: 'group-hover:border-slate-500/30',
+            hoverBg: 'dark:group-hover:bg-slate-500/[0.03]'
         }
     };
 
@@ -93,54 +100,63 @@ function ShortcutCard({ title, subtitle, icon: Icon, color, onClick, delay = 0, 
         mouseY.set(clientY - top);
     }
 
-    const springConfig = { damping: 20, stiffness: 300 };
-    const x = useSpring(mouseX, springConfig);
-    const y = useSpring(mouseY, springConfig);
+    const mouseSpringConfig = { damping: 25, stiffness: 250 };
+    const x = useSpring(mouseX, mouseSpringConfig);
+    const y = useSpring(mouseY, mouseSpringConfig);
     const background = useTransform(
         [x, y],
-        ([latestX, latestY]) => `radial-gradient(100px circle at ${latestX}px ${latestY}px, ${config.glow}, transparent)`
+        ([latestX, latestY]) => `radial-gradient(120px circle at ${latestX}px ${latestY}px, ${config.glow}, transparent)`
     );
 
     return (
         <motion.button
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay, type: "spring", stiffness: 100, damping: 15 }}
-            whileHover={{ y: -8, scale: 1.02 }}
-            whileTap={{ scale: 0.95 }}
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay, type: "spring", stiffness: 120, damping: 20 }}
+            whileHover={{ y: -6, scale: 1.02 }}
+            whileTap={{ scale: 0.96 }}
             onMouseMove={handleMouseMove}
             onClick={onClick}
-            className={`flex flex-col items-center justify-between p-4 rounded-[2.5rem] border border-slate-200/60 dark:border-white/5 bg-white dark:bg-slate-900 transition-colors duration-500 group relative overflow-hidden h-[120px] w-full shadow-lg shadow-slate-200/40 dark:shadow-none ${config.shadow} ${config.border} ${className}`}
+            className={`flex items-center justify-center p-0 rounded-[2.25rem] border border-slate-100 dark:border-white/[0.04] bg-white dark:bg-white/[0.02] backdrop-blur-md transition-all duration-500 group relative overflow-hidden h-[130px] w-full shadow-sm dark:shadow-none hover:shadow-xl hover:shadow-slate-200/50 dark:hover:shadow-none ${config.border} ${config.hoverBg} ${className}`}
         >
+            {/* Dynamic Spotlight Effect */}
             <motion.div
-                className="absolute inset-0 z-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                className="absolute inset-0 z-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300"
                 style={{ background }}
             />
 
-            <div className="relative z-10 w-full h-full flex flex-col items-center justify-between pointer-events-none">
-                <div className={`w-12 h-12 rounded-[1.25rem] bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-white/5 flex items-center justify-center transition-all duration-500 group-hover:rotate-[10deg] group-hover:scale-110 ${config.iconColor}`}>
-                    <Icon className="w-6 h-6 stroke-[2.25]" />
+            {/* Content Container - Perfect Vertical Centering */}
+            <div className="relative z-10 w-full h-full flex flex-col items-center justify-center gap-3 pointer-events-none">
+                {/* Icon Box */}
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-700 group-hover:scale-110 group-hover:rotate-[8deg] border border-transparent shadow-sm dark:shadow-none ${config.iconBox} ${config.iconColor}`}>
+                    <Icon className="w-6 h-6 stroke-[2.25] drop-shadow-[0_0_8px_rgba(var(--icon-rgb),0.3)]" />
                 </div>
 
-                <div className="flex flex-col items-center gap-1 w-full mt-2">
-                    <span className="text-[11px] font-black text-slate-800 dark:text-slate-100 uppercase tracking-[0.05em] leading-none group-hover:tracking-[0.1em] transition-all duration-500">{title}</span>
-                    {subtitle && (
-                        <div className="h-4 flex items-center justify-center w-full px-1 overflow-hidden">
+                {/* Text Section - Balanced spacing */}
+                <div className="flex flex-col items-center justify-center w-full px-2">
+                    <span className="text-[11px] font-black text-slate-800 dark:text-slate-100 uppercase tracking-[0.15em] leading-tight block w-full text-center mb-1">{title}</span>
+                    {subtitle ? (
+                        <div className="h-3 flex items-center justify-center w-full px-1 overflow-hidden">
                             <motion.span
                                 key={subtitle}
-                                initial={{ opacity: 0, y: 10 }}
+                                initial={{ opacity: 0, y: 5 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                className="text-[9px] font-bold text-slate-400 dark:text-slate-500 truncate w-full text-center tabular-nums leading-none"
+                                className="text-[8px] font-bold text-slate-400 dark:text-white/20 truncate w-full text-center tabular-nums leading-none tracking-tight block"
                                 dir="rtl"
                             >
                                 {subtitle}
                             </motion.span>
                         </div>
+                    ) : (
+                        <div className="h-3 flex items-center justify-center">
+                            <div className="w-5 h-[1.5px] bg-slate-100 dark:bg-white/[0.03] opacity-30" />
+                        </div>
                     )}
                 </div>
             </div>
 
-            <div className="absolute top-0 right-0 w-12 h-12 bg-gradient-to-br from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
+            {/* Corner Shine */}
+            <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-white/[0.08] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-1000 pointer-events-none" />
         </motion.button>
     );
 }
@@ -164,88 +180,107 @@ export function ShortcutsGrid({ onOpenOccasions, onOpenQibla, onOpenTasbih, onCo
         if (onOpenPrayerTimes) {
             onOpenPrayerTimes();
         } else {
-            // Default behavior if not provided
             window.dispatchEvent(new CustomEvent('openPrayerTimes'));
         }
     };
 
     return (
-        <div className="space-y-6 pt-2">
-            <div className="flex items-center justify-between px-1" dir="rtl">
-                <div className="flex items-center gap-3">
-                    <div className="w-1.5 h-6 bg-amber-500 rounded-full" />
-                    <div className="flex flex-col">
-                        <h2 className="text-lg font-black text-slate-800 dark:text-white leading-none">اللوحة الذكية</h2>
-                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1">الوصول السريع والذكي</span>
+        <div className="space-y-5 pt-4">
+            {/* Layout Container */}
+            <div className="p-1 rounded-[2.75rem] bg-slate-50/50 dark:bg-white/[0.01] border border-slate-100 dark:border-white/[0.03] shadow-inner">
+                {/* Header (Inside Container) */}
+                <div className="flex items-center justify-between px-5 pt-5 pb-4" dir="rtl">
+                    <div className="flex items-center gap-3.5">
+                        <div className="w-1.5 h-7 bg-amber-500 rounded-full shadow-[0_0_12px_rgba(245,158,11,0.4)]" />
+                        <div className="flex flex-col gap-0.5">
+                            <h2 className="text-[1.15rem] font-black text-slate-800 dark:text-white leading-none tracking-tight">اللوحة الذكية</h2>
+                            <span className="text-[9px] font-bold text-slate-400 dark:text-white/20 uppercase tracking-[0.2em]">الوصول السريع والذكي</span>
+                        </div>
+                    </div>
+
+                    <motion.div
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white dark:bg-white/[0.03] border border-slate-100 dark:border-white/[0.05] shadow-sm relative overflow-hidden group/ready"
+                    >
+                        <motion.div
+                            animate={{ opacity: [0.4, 1, 0.4] }}
+                            transition={{ duration: 2, repeat: Infinity }}
+                            className="w-1.5 h-1.5 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.6)]"
+                        />
+                        <span className="text-[10px] font-black text-slate-600 dark:text-white/40 tracking-wider">جاهز</span>
+                    </motion.div>
+                </div>
+
+                {/* Grid (Centered inside Container) */}
+                <div className="flex justify-center w-full p-3.5">
+                    <div className="grid grid-cols-2 sm:flex sm:flex-wrap justify-center gap-3.5 w-full">
+                        <ShortcutCard
+                            title="المناسبات"
+                            icon={Calendar}
+                            color="amber"
+                            onClick={onOpenOccasions}
+                            delay={0.1}
+                            className="flex-1 min-w-[120px] max-w-[160px]"
+                        />
+                        <ShortcutCard
+                            title="القبلة"
+                            icon={Compass}
+                            color="emerald"
+                            onClick={onOpenQibla}
+                            delay={0.15}
+                            className="flex-1 min-w-[120px] max-w-[160px]"
+                        />
+                        <ShortcutCard
+                            title="المسبحة"
+                            icon={TasbihIcon}
+                            color="indigo"
+                            onClick={onOpenTasbih}
+                            delay={0.2}
+                            className="flex-1 min-w-[120px] max-w-[160px]"
+                        />
+
+                        {!isExpanded ? (
+                            <ShortcutCard
+                                title="المزيد"
+                                icon={Plus}
+                                color="slate"
+                                onClick={() => setIsExpanded(true)}
+                                delay={0.25}
+                                className="flex-1 min-w-[120px] max-w-[160px] dark:bg-white/[0.01] border-dashed border-slate-200 dark:border-white/[0.08]"
+                            />
+                        ) : (
+                            <ShortcutCard
+                                title="المواقيت"
+                                icon={Clock}
+                                color="violet"
+                                onClick={handleOpenPrayerTimes}
+                                delay={0}
+                                className="flex-1 min-w-[120px] max-w-[160px]"
+                            />
+                        )}
+
+                        <AnimatePresence mode="popLayout">
+                            {isExpanded && (
+                                <motion.div
+                                    initial={{ opacity: 0, scale: 0.8, x: 20 }}
+                                    animate={{ opacity: 1, scale: 1, x: 0 }}
+                                    exit={{ opacity: 0, scale: 0.8, x: 20 }}
+                                    transition={{ type: "spring", stiffness: 150, damping: 15 }}
+                                    className="flex-1 min-w-[120px] max-w-[160px]"
+                                >
+                                    <ShortcutCard
+                                        title="الورد"
+                                        subtitle={lastRead ? `سورة ${lastRead.surah}` : 'ابدأ الآن'}
+                                        icon={BookOpen}
+                                        color="rose"
+                                        onClick={onContinueQuran}
+                                        delay={0.05}
+                                        className="w-full"
+                                    />
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
                     </div>
                 </div>
-                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800">
-                    <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                    <span className="text-[9px] font-black text-slate-500">جاهز</span>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-4 gap-4 w-full px-2">
-                <ShortcutCard
-                    title="المناسبات"
-                    icon={Calendar}
-                    color="amber"
-                    onClick={onOpenOccasions}
-                    delay={0}
-                />
-                <ShortcutCard
-                    title="القبلة"
-                    icon={Compass}
-                    color="emerald"
-                    onClick={onOpenQibla}
-                    delay={0.06}
-                />
-                <ShortcutCard
-                    title="المسبحة"
-                    icon={TasbihIcon}
-                    color="indigo"
-                    onClick={onOpenTasbih}
-                    delay={0.12}
-                />
-
-                {!isExpanded ? (
-                    <ShortcutCard
-                        title="المزيد"
-                        icon={Plus}
-                        color="slate"
-                        onClick={() => setIsExpanded(true)}
-                        delay={0.18}
-                        className="bg-slate-50/50 dark:bg-slate-800/50 border-dashed"
-                    />
-                ) : (
-                    <ShortcutCard
-                        title="مواقيت الصلاة"
-                        icon={Clock}
-                        color="violet"
-                        onClick={handleOpenPrayerTimes}
-                        delay={0}
-                    />
-                )}
-
-                <AnimatePresence>
-                    {isExpanded && (
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.8 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.8 }}
-                            className="contents"
-                        >
-                            <ShortcutCard
-                                title="مُتابعة الورد"
-                                subtitle={lastRead ? `سورة ${lastRead.surah}، آية ${lastRead.ayah}` : 'ابدأ ختمتك الآن'}
-                                icon={BookOpen}
-                                color="rose"
-                                onClick={onContinueQuran}
-                                delay={0.06}
-                            />
-                        </motion.div>
-                    )}
-                </AnimatePresence>
             </div>
         </div>
     );

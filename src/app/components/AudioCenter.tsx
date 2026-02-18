@@ -220,152 +220,210 @@ export function AudioCenter() {
           )}
 
           {activeTab === 'radio' && (
-            <div className="flex flex-col gap-6">
-              {/* Vintage Radio Chassis */}
-              <div className="relative p-1 bg-[#dcd5c9] dark:bg-[#2a2723] rounded-[2.5rem] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.3)] border-[5px] border-[#c4baac] dark:border-[#3a352f] overflow-hidden max-w-[700px] mx-auto w-full">
-                {/* Wood Texture Overlay */}
-                <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/wood-pattern.png')]" />
+            <div className="flex flex-col gap-8 pb-10">
+              {/* Premium Hi-Fi Radio Unit */}
+              <div className="relative p-1.5 bg-gradient-to-b from-[#3a352f] to-[#1a1816] rounded-[3rem] shadow-[0_40px_100px_-20px_rgba(0,0,0,0.6)] border border-white/[0.05] overflow-hidden max-w-[650px] mx-auto w-full group/radio">
+                {/* Wood/Metal Frame Glow */}
+                <div className="absolute inset-0 bg-gradient-to-tr from-amber-900/10 via-transparent to-white/5 opacity-50" />
 
-                <div className="bg-[#f2ede4] dark:bg-[#1a1816] rounded-[2.2rem] p-5 sm:p-7 relative overflow-hidden border border-white/20 dark:border-white/5">
-                  <div className="relative z-10 flex flex-col gap-7">
+                <div className="bg-[#121110] rounded-[2.8rem] p-6 sm:p-8 relative overflow-hidden ring-1 ring-white/10 shadow-inner">
+                  {/* Internal Ambient Glow */}
+                  <div className="absolute -top-24 -right-24 w-64 h-64 bg-emerald-500/5 rounded-full blur-[80px]" />
+                  <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-amber-500/5 rounded-full blur-[80px]" />
 
-                    {/* Top Section: Analog Frequency Dial */}
-                    <div className="relative bg-[#ebe4d8] dark:bg-[#0d0c0b] rounded-2xl p-5 shadow-inner border border-[#d6cfc2] dark:border-white/5 overflow-hidden">
-                      {/* Frequency Scale */}
-                      <div className="absolute top-4 left-5 right-5 h-10 flex justify-between items-end opacity-40" dir="ltr">
-                        {[...Array(61)].map((_, i) => (
-                          <div key={i} className={`w-0.5 rounded-full bg-slate-800 dark:bg-emerald-100 ${i % 10 === 0 ? 'h-5' : i % 5 === 0 ? 'h-3.5' : 'h-2'}`} />
-                        ))}
-                      </div>
-
-                      {/* Scale Numbers */}
-                      <div className="absolute top-10 left-5 right-5 flex justify-between px-1 text-[7px] font-black text-slate-400 dark:text-emerald-500/40 uppercase tracking-tighter" dir="ltr">
-                        <span>88 AM</span>
-                        <span>92</span>
-                        <span>96</span>
-                        <span>100 KHZ</span>
-                        <span>104</span>
-                        <span>108</span>
-                      </div>
-
-                      {/* Moving Red Needle */}
-                      <motion.div
-                        animate={{ x: `${(RADIO_STATIONS.findIndex(s => s.id === selectedRadioStation.id) / (RADIO_STATIONS.length - 1)) * 100}%` }}
-                        transition={{ type: "spring", stiffness: 50, damping: 15 }}
-                        className="absolute top-4 bottom-4 left-5 right-5 pointer-events-none"
-                        dir="ltr"
-                      >
-                        <div className="absolute top-0 bottom-0 w-0.5 bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]">
-                          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-rose-600 rounded-full" />
-                          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-rose-600 rounded-full" />
+                  <div className="relative z-10 flex flex-col gap-9">
+                    {/* 1. Frequency Display & Tuning Bar */}
+                    <div className="relative bg-[#080807] rounded-3xl p-6 border border-white/[0.03] shadow-[inset_0_2px_15px_rgba(0,0,0,0.8)] overflow-hidden">
+                      {/* Interactive Tuning Scale */}
+                      <div className="relative h-14 w-full flex items-center justify-center overflow-hidden" dir="ltr">
+                        {/* Scale Ticks */}
+                        <div className="flex items-center gap-1.5 opacity-20 transition-all duration-700">
+                          {[...Array(81)].map((_, i) => (
+                            <div
+                              key={i}
+                              className={`w-0.5 rounded-full bg-emerald-200 ${i % 10 === 0 ? 'h-6' : i % 5 === 0 ? 'h-4' : 'h-2'}`}
+                            />
+                          ))}
                         </div>
-                      </motion.div>
 
-                      {/* Display Window */}
-                      <div className="mt-8 relative bg-[#1a1816] rounded-xl p-3 border-2 border-[#c4baac] dark:border-white/10 shadow-2xl flex flex-col items-center justify-center min-h-[70px]">
-                        <div className="absolute inset-0 bg-emerald-500/5 blur-xl" />
+                        {/* Frequency Numbers */}
+                        <div className="absolute top-0 inset-x-0 flex justify-between px-2 text-[6px] font-black text-emerald-500/20 uppercase tracking-tighter" dir="ltr">
+                          <span>88.0</span>
+                          <span>92.0</span>
+                          <span>96.0</span>
+                          <span>100.0</span>
+                          <span>104.0</span>
+                          <span>108.0</span>
+                        </div>
+
+                        {/* Active Glow Needle */}
+                        <motion.div
+                          animate={{ x: `${(RADIO_STATIONS.findIndex(s => s.id === selectedRadioStation.id) / (RADIO_STATIONS.length - 1)) * 100 - 50}%` }}
+                          transition={{ type: "spring", stiffness: 45, damping: 12 }}
+                          className="absolute inset-y-0 w-1 flex flex-col items-center justify-between py-1 z-20 pointer-events-none"
+                          dir="ltr"
+                        >
+                          <div className="w-1.5 h-1.5 bg-rose-500 rounded-full shadow-[0_0_12px_rgba(244,63,94,0.8)]" />
+                          <div className="w-0.5 h-full bg-rose-500/50 shadow-[0_0_8px_rgba(244,63,94,0.4)]" />
+                          <div className="w-1.5 h-1.5 bg-rose-500 rounded-full shadow-[0_0_12px_rgba(244,63,94,0.8)]" />
+                        </motion.div>
+                      </div>
+
+                      {/* 2. Main Station Name Display ('Digital VFD Look') */}
+                      <div className="mt-4 relative bg-black/40 rounded-2xl p-5 border border-white/[0.05] shadow-2xl flex flex-col items-center justify-center min-h-[90px] overflow-hidden">
+                        <motion.div
+                          animate={isPlaying ? { opacity: [0.03, 0.08, 0.03] } : { opacity: 0.03 }}
+                          transition={{ duration: 2, repeat: Infinity }}
+                          className="absolute inset-0 bg-emerald-500 blur-2xl"
+                        />
+
                         <AnimatePresence mode="wait">
                           <motion.div
                             key={selectedRadioStation.id}
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 1.05 }}
-                            className="text-center relative z-10"
+                            initial={{ opacity: 0, y: 10, filter: 'blur(10px)' }}
+                            animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                            exit={{ opacity: 0, y: -10, filter: 'blur(10px)' }}
+                            className="text-center relative z-10 w-full"
                           >
-                            <h3 className="text-xl sm:text-2xl font-black text-emerald-500 dark:text-emerald-400 drop-shadow-[0_0_8px_rgba(16,185,129,0.3)] font-mono uppercase tracking-tight">
+                            <h3 className="text-2xl sm:text-3xl font-black text-emerald-400 drop-shadow-[0_0_10px_rgba(16,185,129,0.4)] tracking-tight leading-none mb-1">
                               {selectedRadioStation.name.replace('إذاعة ', '')}
                             </h3>
-                            <div className="flex items-center justify-center gap-1.5 mt-0.5">
-                              <span className="text-[8px] font-black text-emerald-600/50 uppercase tracking-[0.2em]">Signal Active</span>
+                            <div className="flex items-center justify-center gap-2">
+                              {isPlaying && (
+                                <motion.div
+                                  animate={{ scale: [1, 1.2, 1] }}
+                                  transition={{ repeat: Infinity, duration: 1.5 }}
+                                  className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"
+                                />
+                              )}
+                              <span className="text-[8px] font-black text-emerald-500/30 uppercase tracking-[0.3em]">
+                                {isBuffering ? 'Buffering Link...' : isPlaying ? 'Transmitting Live' : 'Signal Ready'}
+                              </span>
                             </div>
                           </motion.div>
                         </AnimatePresence>
-                      </div>
-                    </div>
 
-                    {/* Middle Section: Navigation & Speaker Grille */}
-                    <div className="flex items-center gap-3">
-                      <motion.button
-                        whileHover={{ scale: 1.05, rotate: -3 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={handlePrevStation}
-                        className="w-12 h-12 flex items-center justify-center rounded-xl bg-[#ebe4d8] dark:bg-[#2a2723] border-b-[3px] border-[#c4baac] dark:border-black/40 text-slate-600 dark:text-slate-400 shadow-sm active:border-b-0 active:translate-y-0.5 transition-all"
-                      >
-                        <ChevronRight className="w-6 h-6" />
-                      </motion.button>
-
-                      {/* Speaker Grille Pattern */}
-                      <div className="flex-1 h-12 bg-[#e5ddd0] dark:bg-[#0d0c0b] rounded-xl border border-[#d6cfc2] dark:border-white/5 flex flex-col justify-around py-3 px-4 shadow-inner">
-                        {[...Array(4)].map((_, i) => (
-                          <div key={i} className="h-0.5 bg-[#c4baac] dark:bg-white/5 rounded-full w-full opacity-40" />
-                        ))}
-                      </div>
-
-                      <motion.button
-                        whileHover={{ scale: 1.05, rotate: 3 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={handleNextStation}
-                        className="w-12 h-12 flex items-center justify-center rounded-xl bg-[#ebe4d8] dark:bg-[#2a2723] border-b-[3px] border-[#c4baac] dark:border-black/40 text-slate-600 dark:text-slate-400 shadow-sm active:border-b-0 active:translate-y-0.5 transition-all"
-                      >
-                        <ChevronLeft className="w-6 h-6" />
-                      </motion.button>
-                    </div>
-
-                    {/* Bottom Section: Controls & Volume Dial */}
-                    <div className="flex items-end gap-5 pt-1">
-                      {/* Retro Play Button */}
-                      <motion.button
-                        onClick={togglePlay}
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center transition-all relative shrink-0 border-[6px] border-[#dcd5c9] dark:border-[#2a2723] shadow-xl
-                          ${isPlaying
-                            ? 'bg-[#1a1816] text-emerald-500 shadow-inner'
-                            : 'bg-emerald-600 text-white shadow-[0_8px_16px_rgba(5,150,105,0.3)]'
-                          }
-                        `}
-                      >
-                        <div className="absolute inset-0 rounded-full border border-white/10" />
-                        {isBuffering ? <Loader2 className="w-8 h-8 animate-spin" /> : isPlaying ? <Pause className="w-8 h-8 fill-current" /> : <Play className="w-8 h-8 fill-current translate-x-1" />}
-                      </motion.button>
-
-                      {/* Volume Area (Retro Gauge Style) */}
-                      <div className="flex-1 bg-[#ebe4d8] dark:bg-[#0d0c0b] rounded-2xl p-4 border border-[#d6cfc2] dark:border-white/5 shadow-inner">
-                        <div className="flex justify-between items-center mb-2 px-0.5">
-                          <span className="text-[9px] font-black text-slate-500 dark:text-emerald-500/40 uppercase tracking-widest">Gain Control</span>
-                          <span className="text-[10px] font-mono font-black text-emerald-600 dark:text-emerald-500">{Math.round(volume * 100)}%</span>
-                        </div>
-                        <div className="relative h-5 flex items-center">
-                          <div className="w-full h-1.5 bg-[#dcd5c9] dark:bg-slate-900 rounded-full overflow-hidden border border-white/50 dark:border-white/5">
+                        {/* Frequency Waveflow (Animated when playing) */}
+                        <div className="absolute bottom-2 inset-x-6 h-6 flex items-end justify-center gap-[2px] opacity-20">
+                          {[...Array(20)].map((_, i) => (
                             <motion.div
-                              animate={{ width: `${volume * 100}%` }}
-                              className="h-full bg-gradient-to-r from-emerald-600 to-emerald-400"
+                              key={i}
+                              animate={isPlaying ? {
+                                height: [4, Math.random() * 16 + 4, 4],
+                                opacity: [0.3, 0.7, 0.3]
+                              } : { height: 4 }}
+                              transition={{ duration: 0.5 + Math.random() * 0.5, repeat: Infinity, delay: i * 0.05 }}
+                              className="w-1 bg-emerald-500 rounded-t-full"
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 3. Controls Section */}
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-10 px-2 lg:px-4">
+                      {/* Play Button - Centered */}
+                      <div className="relative group/play flex-shrink-0">
+                        <motion.button
+                          onClick={togglePlay}
+                          whileTap={{ scale: 0.95 }}
+                          className={`w-24 h-24 sm:w-28 sm:h-28 rounded-full flex items-center justify-center transition-all duration-300 relative z-10 border-[10px] dark:border-[#1a1816] shadow-2xl
+                            ${isPlaying
+                              ? 'bg-[#1a1816] text-emerald-500 border-[#2a2723]'
+                              : 'bg-emerald-500 text-white border-white/[0.05] shadow-emerald-500/20'
+                            }
+                          `}
+                        >
+                          <AnimatePresence mode="wait">
+                            <motion.div
+                              key={isBuffering ? 'buff' : isPlaying ? 'pause' : 'play'}
+                              initial={{ opacity: 0, scale: 0.8 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              exit={{ opacity: 0, scale: 0.8 }}
+                              className="flex items-center justify-center"
+                            >
+                              {isBuffering ? (
+                                <Loader2 className="w-10 h-10 animate-spin" />
+                              ) : isPlaying ? (
+                                <Pause className="w-12 h-12 fill-current" />
+                              ) : (
+                                <Play className="w-12 h-12 fill-current translate-x-1.5" />
+                              )}
+                            </motion.div>
+                          </AnimatePresence>
+                        </motion.button>
+                      </div>
+
+                      <div className="flex-1 w-full flex flex-col gap-6">
+                        {/* Navigation Row */}
+                        <div className="flex items-center gap-3">
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={handlePrevStation}
+                            className="flex-1 h-16 flex items-center justify-center rounded-2xl bg-white/[0.03] border border-white/[0.05] hover:bg-white/[0.08] text-white/40 hover:text-white transition-all shadow-lg"
+                          >
+                            <ChevronRight className="w-7 h-7 ml-2" />
+                            <span className="text-[11px] font-black uppercase tracking-widest hidden sm:inline">السابق</span>
+                          </motion.button>
+
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={handleNextStation}
+                            className="flex-1 h-16 flex items-center justify-center rounded-2xl bg-white/[0.03] border border-white/[0.05] hover:bg-white/[0.08] text-white/40 hover:text-white transition-all shadow-lg"
+                          >
+                            <span className="text-[11px] font-black uppercase tracking-widest hidden sm:inline">التالي</span>
+                            <ChevronLeft className="w-7 h-7 mr-2" />
+                          </motion.button>
+                        </div>
+
+                        {/* Volume Gauge */}
+                        <div className="bg-black/40 rounded-2xl p-4 border border-white/[0.05] shadow-inner">
+                          <div className="flex justify-between items-center mb-3 px-1">
+                            <div className="flex items-center gap-2">
+                              <Volume2 className="w-3.5 h-3.5 text-emerald-500/40" />
+                              <span className="text-[9px] font-black text-emerald-500/20 uppercase tracking-[0.2em]">Master Output</span>
+                            </div>
+                            <span className="text-[10px] font-mono font-black text-emerald-500 tabular-nums bg-emerald-500/10 px-2 py-0.5 rounded-md">{Math.round(volume * 100)}%</span>
+                          </div>
+                          <div className="relative h-6 flex items-center group/vol">
+                            <div className="w-full h-1.5 bg-white/[0.03] rounded-full overflow-hidden border border-white/5 shadow-inner">
+                              <motion.div
+                                animate={{ width: `${volume * 100}%` }}
+                                className="h-full bg-gradient-to-r from-emerald-600 to-emerald-400 shadow-[0_0_15px_rgba(52,211,153,0.3)]"
+                              />
+                            </div>
+                            <input
+                              type="range"
+                              min="0"
+                              max="1"
+                              step="0.01"
+                              value={volume}
+                              onChange={handleVolumeChange}
+                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                            />
+                            {/* Visual Handle */}
+                            <motion.div
+                              animate={{ left: `${volume * 100}%` }}
+                              className="absolute w-4 h-4 bg-white rounded-full border-2 border-emerald-500 shadow-xl pointer-events-none -ml-2 opacity-0 group-hover/vol:opacity-100 transition-opacity"
                             />
                           </div>
-                          <input
-                            type="range"
-                            min="0"
-                            max="1"
-                            step="0.01"
-                            value={volume}
-                            onChange={handleVolumeChange}
-                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                          />
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
 
-
-
                 <audio
                   ref={radioAudioRef}
                   src={selectedRadioStation.url}
+                  preload="none"
                   onPlay={() => { setIsPlaying(true); setIsBuffering(false); }}
                   onPause={() => { setIsPlaying(false); setIsBuffering(false); }}
                   onWaiting={() => setIsBuffering(true)}
                   onPlaying={() => setIsBuffering(false)}
+                  onCanPlay={() => { if (isPlaying) setIsBuffering(false); }}
                   onError={(e) => {
                     console.error('Radio Error:', e);
                     setIsPlaying(false);

@@ -46,7 +46,6 @@ export function DailyHeader({
   const [currentTask, setCurrentTask] = useState<string | null>(
     null,
   );
-  const [prayerTimes, setPrayerTimes] = useState<any>(null);
   const [displayedText, setDisplayedText] = useState("");
   const [isTypingComplete, setIsTypingComplete] =
     useState(false);
@@ -254,13 +253,14 @@ export function DailyHeader({
           getTodayQuranProgress(userId),
         ]);
 
-        // Count completed prayers
+        // Count completed prayers (include taraweeh in Ramadan)
         const prayersCompleted = prayers
           ? (prayers.fajr ? 1 : 0) +
           (prayers.dhuhr ? 1 : 0) +
           (prayers.asr ? 1 : 0) +
           (prayers.maghrib ? 1 : 0) +
-          (prayers.isha ? 1 : 0)
+          (prayers.isha ? 1 : 0) +
+          (isRamadan && prayers.taraweeh ? 1 : 0)
           : 0;
 
         // Count completed athkar
@@ -275,11 +275,14 @@ export function DailyHeader({
 
         // Check if today is Friday for Kahf availability
         const isFriday = new Date().getDay() === 5;
-        const maxQuranTasks = isFriday ? 3 : 2; // Kahf only on Friday
+        // Base: mulk (1) + kahf on Friday (1) + 20 pages in Ramadan (1)
+        const maxQuranTasks = (isFriday ? 2 : 1) + (isRamadan ? 1 : 0);
+        // Prayers: 5 + taraweeh in Ramadan
+        const maxPrayers = 5 + (isRamadan ? 1 : 0);
 
         const total =
           prayersCompleted + athkarCompleted + quranCompleted;
-        const maxPossible = 5 + 2 + maxQuranTasks; // 5 prayers + 2 athkar + quran tasks
+        const maxPossible = maxPrayers + 2 + maxQuranTasks; // prayers + 2 athkar + quran tasks
         const progress = Math.round(
           (total / maxPossible) * 100,
         );
@@ -304,43 +307,6 @@ export function DailyHeader({
     };
   }, []);
 
-  // Fetch prayer times from API
-  useEffect(() => {
-    const fetchPrayerTimes = async () => {
-      try {
-        // Format today's date as DD-MM-YYYY
-        const today = new Date();
-        const day = String(today.getDate()).padStart(2, "0");
-        const month = String(today.getMonth() + 1).padStart(
-          2,
-          "0",
-        );
-        const year = today.getFullYear();
-        const dateString = `${day} -${month} -${year} `;
-
-        const url = `https://api.aladhan.com/v1/timings/${dateString}?latitude=31.9454&longitude=35.9284&method=1`;
-        const response = await fetch(url);
-        const data = await response.json();
-
-        if (data.data && data.data.timings) {
-          setPrayerTimes(data.data.timings);
-        }
-      } catch (error) {
-        console.error("Error fetching prayer times:", error);
-        // Fallback to default times
-        setPrayerTimes({
-          Fajr: "05:15",
-          Dhuhr: "12:30",
-          Asr: "15:45",
-          Maghrib: "18:20",
-          Isha: "19:45",
-        });
-      }
-    };
-
-    fetchPrayerTimes();
-  }, []);
-
   // Fetch holidays on mount
   useEffect(() => {
     const loadHolidays = async () => {
@@ -353,7 +319,7 @@ export function DailyHeader({
   }, []);
 
   useEffect(() => {
-    if (!prayerTimes) return;
+    if (!apiPrayerTimes) return;
 
     const timeStringToMinutes = (timeString: string): number => {
       const [hours, minutes] = timeString.split(":").map(Number);
@@ -368,11 +334,11 @@ export function DailyHeader({
       const isFriday = now.getDay() === 5;
       let current = null;
 
-      const fajrMinutes = timeStringToMinutes(prayerTimes.Fajr);
-      const dhuhrMinutes = timeStringToMinutes(prayerTimes.Dhuhr);
-      const asrMinutes = timeStringToMinutes(prayerTimes.Asr);
-      const maghribMinutes = timeStringToMinutes(prayerTimes.Maghrib);
-      const ishaMinutes = timeStringToMinutes(prayerTimes.Isha);
+      const fajrMinutes = timeStringToMinutes(apiPrayerTimes.Fajr);
+      const dhuhrMinutes = timeStringToMinutes(apiPrayerTimes.Dhuhr);
+      const asrMinutes = timeStringToMinutes(apiPrayerTimes.Asr);
+      const maghribMinutes = timeStringToMinutes(apiPrayerTimes.Maghrib);
+      const ishaMinutes = timeStringToMinutes(apiPrayerTimes.Isha);
 
       // 1. Mandatory Prayers (with 30 min preview)
       const previewWindow = 30; // minutes
@@ -407,12 +373,16 @@ export function DailyHeader({
           current = "سورة الكهف";
         } else if (currentMinutes >= 6 * 60 && currentMinutes < 10 * 60) { // 6 AM to 10 AM
           current = "أذكار الصباح";
+        } else if (isRamadan && currentMinutes >= ishaMinutes + 20 && currentMinutes < ishaMinutes + 80) { // After Isha in Ramadan - Taraweeh
+          current = "صلاة التراويح";
+        } else if (isRamadan && currentMinutes >= ishaMinutes + 80 && currentMinutes < ishaMinutes + 180) { // After Taraweeh - 20 pages Quran
+          current = "٢٠ صفحة قرآن";
         } else if (currentMinutes >= asrMinutes && currentMinutes < maghribMinutes) { // After Asr, before Maghrib
           current = "أذكار المساء";
         } else if (currentMinutes >= 21 * 60 || currentMinutes < 2 * 60) { // 9 PM to 2 AM
           current = "سورة الملك";
         } else {
-          current = "سورة البقرة";
+          current = null;
         }
       }
 
@@ -429,7 +399,7 @@ export function DailyHeader({
       clearInterval(timer);
       window.removeEventListener("storage", updateCurrentTask);
     };
-  }, [prayerTimes, nextHoliday]);
+  }, [apiPrayerTimes, nextHoliday]);
 
   const arabicDays = [
     "الأحد",
@@ -470,169 +440,281 @@ export function DailyHeader({
       window.dispatchEvent(new CustomEvent("openQuranSurah", { detail: { surah: "mulk" } }));
     } else if (currentTask === "سورة الكهف") {
       window.dispatchEvent(new CustomEvent("openQuranSurah", { detail: { surah: "kahf" } }));
+    } else if (currentTask === "صلاة التراويح") {
+      window.dispatchEvent(new CustomEvent("openQuranSurah", { detail: { surah: "taraweeh" } })); // Or suitable action
     } else if (currentTask === "أذكار الصباح") {
       window.dispatchEvent(new CustomEvent("openAthkar", { detail: { type: "morning" } }));
     } else if (currentTask === "أذكار المساء") {
       window.dispatchEvent(new CustomEvent("openAthkar", { detail: { type: "evening" } }));
     } else if (currentTask === "أدعية الإسراء والمعراج") {
       window.dispatchEvent(new CustomEvent("openAthkar", { detail: { type: "israa_miraj" } }));
+    } else if (currentTask === "٢٠ صفحة قرآن") {
+      window.dispatchEvent(new CustomEvent("openQuranBookmark"));
     }
   };
 
+  // Format time for the live clock
+  const hours = currentTime.getHours();
+  const minutes = currentTime.getMinutes();
+  const formattedTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+
+  // Progress ring calculations
+  const progressRadius = 28;
+  const progressCircumference = 2 * Math.PI * progressRadius;
+  const progressOffset = progressCircumference - (stats.todayProgress / 100) * progressCircumference;
+
   return (
     <div
-      className={`relative bg-gradient-to-br ${timeConfig.headerGradient} rounded-[2rem] p-5 sm:p-7 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.15)] text-white transition-all duration-1000 group border border-white/20 backdrop-blur-2xl ring-1 ring-white/5 overflow-hidden min-h-[190px] flex flex-col justify-center`}
+      dir="rtl"
+      className={`relative bg-gradient-to-br ${timeConfig.headerGradient} rounded-[2rem] p-4 sm:p-6 shadow-[0_20px_60px_-12px_rgba(0,0,0,0.25)] text-white transition-all duration-1000 group border border-white/[0.15] backdrop-blur-2xl ring-1 ring-white/5 overflow-hidden min-h-[200px] flex flex-col justify-between`}
     >
-      {/* Sleek Mesh Background */}
+      {/* === PREMIUM ANIMATED BACKGROUND === */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        {/* Primary gradient orb */}
         <motion.div
-          animate={{ x: [0, 20, 0], opacity: [0.1, 0.2, 0.1] }}
-          transition={{ duration: 10, repeat: Infinity }}
-          className="absolute -top-20 -right-20 w-[300px] h-[300px] bg-white/10 rounded-full blur-[80px]"
+          animate={{ x: [0, 30, -10, 0], y: [0, -15, 10, 0], opacity: [0.12, 0.22, 0.15, 0.12] }}
+          transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute -top-24 -right-24 w-[350px] h-[350px] bg-white/10 rounded-full blur-[100px]"
         />
-        <div className="absolute inset-0 opacity-[0.02] bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] mix-blend-overlay" />
+        {/* Secondary orb */}
+        <motion.div
+          animate={{ x: [0, -20, 15, 0], y: [0, 20, -10, 0], opacity: [0.08, 0.16, 0.1, 0.08] }}
+          transition={{ duration: 16, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+          className="absolute -bottom-16 -left-16 w-[250px] h-[250px] bg-indigo-300/10 rounded-full blur-[90px]"
+        />
+        {/* Accent orb */}
+        <motion.div
+          animate={{ scale: [1, 1.15, 1], opacity: [0.06, 0.12, 0.06] }}
+          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut", delay: 4 }}
+          className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[200px] h-[200px] bg-amber-300/8 rounded-full blur-[80px]"
+        />
+        {/* Islamic geometric pattern overlay (SVG) */}
+        <svg className="absolute inset-0 w-full h-full opacity-[0.03]" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <pattern id="islamicPattern" x="0" y="0" width="60" height="60" patternUnits="userSpaceOnUse">
+              <path d="M30 0 L60 30 L30 60 L0 30Z" fill="none" stroke="white" strokeWidth="0.5" />
+              <circle cx="30" cy="30" r="12" fill="none" stroke="white" strokeWidth="0.5" />
+              <path d="M30 18 L42 30 L30 42 L18 30Z" fill="none" stroke="white" strokeWidth="0.3" />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#islamicPattern)" />
+        </svg>
+        {/* Subtle stardust texture */}
+        <div className="absolute inset-0 opacity-[0.015] bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] mix-blend-overlay" />
+        {/* Bottom fade for depth */}
+        <div className="absolute bottom-0 inset-x-0 h-20 bg-gradient-to-t from-black/15 to-transparent" />
       </div>
 
-      {/* Top Right: Compact Actions */}
-      <div className="absolute top-4 right-4 flex items-center gap-2 z-20">
-        <button
-          onClick={onSettingsClick}
-          className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/10 backdrop-blur-3xl border border-white/10 hover:bg-white/20 transition-all active:scale-95 group/btn"
+      {/* === TOP BAR: Date Chip + Actions === */}
+      <div className="relative z-20 flex items-center justify-between w-full mb-3">
+        {/* Date chip (top right in RTL) */}
+        <motion.div
+          initial={{ opacity: 0, x: 15 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.15 }}
         >
-          <Settings className="w-4 h-4 text-white/70 group-hover/btn:rotate-90 transition-transform duration-700" />
-        </button>
-        <div className="relative">
-          <button
-            onClick={() => setShowNotifHistory(!showNotifHistory)}
-            className={`w-9 h-9 flex items-center justify-center rounded-xl transition-all border backdrop-blur-3xl ${showNotifHistory ? 'bg-white/30 border-white/20' : 'bg-white/10 border-white/10 hover:bg-white/20'} active:scale-95`}
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.06] border border-white/[0.06]">
+            {(() => {
+              const iconClass = "w-3 h-3";
+              switch (timeConfig.icon) {
+                case 'sunrise': return <Sunrise className={`${iconClass} text-amber-300`} />;
+                case 'sun': return <Sun className={`${iconClass} text-amber-400`} />;
+                case 'cloud-sun': return <CloudSun className={`${iconClass} text-sky-200`} />;
+                case 'sunset': return <Sunset className={`${iconClass} text-orange-400`} />;
+                case 'moon': return <Moon className={`${iconClass} text-indigo-200`} />;
+                default: return <Sun className={`${iconClass} text-amber-400`} />;
+              }
+            })()}
+            <span className="text-[9px] font-bold text-white/35 tracking-wide">{isRamadan ? `رمضان ${ramadanDay} · ${dayName}` : `${dayName} · ${day} ${month}`}</span>
+          </div>
+        </motion.div>
+
+        {/* Left side: Actions */}
+        <div className="flex items-center gap-2">
+          {/* Live Clock Chip */}
+          <motion.button
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            onClick={() => setShowRealTime(!showRealTime)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.07] backdrop-blur-xl border border-white/[0.08] hover:bg-white/[0.12] transition-all active:scale-95"
           >
-            <Bell className="w-4 h-4 text-white/70" />
-            {hasUnreadNotifs && (
-              <span className="absolute top-2.5 right-2.5 w-1.5 h-1.5 bg-rose-500 rounded-full border border-indigo-600 animate-pulse" />
-            )}
+            <Clock className="w-3 h-3 text-white/40" />
+            <AnimatePresence mode="wait">
+              {showRealTime ? (
+                <motion.span
+                  key="date"
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -5 }}
+                  className="text-[10px] font-bold text-white/60 tabular-nums"
+                >
+                  {dayName} {day} {month}
+                </motion.span>
+              ) : (
+                <motion.span
+                  key="time"
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -5 }}
+                  className="text-[11px] font-black text-white/70 tabular-nums tracking-wider font-mono"
+                >
+                  {formattedTime}
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </motion.button>
+
+          {/* Settings */}
+          <button
+            onClick={onSettingsClick}
+            className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/[0.07] backdrop-blur-xl border border-white/[0.08] hover:bg-white/[0.14] transition-all active:scale-95 group/btn"
+          >
+            <Settings className="w-4 h-4 text-white/50 group-hover/btn:rotate-90 transition-transform duration-700" />
           </button>
 
-          <AnimatePresence>
-            {showNotifHistory && (
-              <motion.div
-                initial={{ opacity: 0, y: 10, x: 10, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, x: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 10, x: 10, scale: 0.95 }}
-                className="absolute top-[calc(100%+8px)] right-0 w-[280px] bg-slate-950/90 backdrop-blur-3xl shadow-2xl rounded-2xl z-[100] border border-white/10 overflow-hidden"
-              >
-                <div className="p-3 bg-white/5 border-b border-white/5 flex justify-between items-center px-4">
-                  <span className="text-[9px] font-black uppercase text-white/40 tracking-widest">الإشعارات</span>
-                  <button onClick={clearHistory} className="text-[8px] font-bold text-rose-400">مسح</button>
-                </div>
-                <div className="max-h-[250px] overflow-y-auto p-2 space-y-1">
-                  {notifHistory.length === 0 ? (
-                    <div className="py-8 text-center text-[9px] font-black uppercase text-white/10 tracking-widest">فارغ</div>
-                  ) : (
-                    notifHistory.map((notif: any) => (
-                      <div key={notif.id} className="p-3 bg-white/5 hover:bg-white/10 rounded-xl transition-all border border-white/5 text-right">
-                        <h4 className="text-[11px] font-black text-white/90 mb-0.5">{notif.title}</h4>
-                        <p className="text-[9px] text-white/40 leading-tight">{notif.body}</p>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      </div>
-
-      <div className="relative z-10 flex flex-col items-center">
-        {/* Unified Smart Calendar Unit (Far Left & Centered Vertically) */}
-        <div className="absolute left-2 top-1/2 -translate-y-1/2">
-          <motion.div
-            whileHover={{ scale: 1.02 }}
-            className="flex flex-col w-[85px] rounded-2xl backdrop-blur-3xl border border-white/20 shadow-2xl overflow-hidden ring-1 ring-white/10 bg-white/10"
-          >
-            {/* Month Header */}
-            <div className="h-[22px] flex items-center justify-center bg-rose-500/80">
-              <span className="text-[10px] font-black uppercase tracking-widest text-white leading-none">
-                {isRamadan ? 'رمضان' : month}
-              </span>
-            </div>
-
-            {/* Day Number */}
-            <div className="flex flex-col items-center justify-center bg-white/5 py-1.5 relative overflow-hidden">
-              {isRamadan && (
-                <Moon className="absolute -right-2 -bottom-2 w-8 h-8 text-white/5 -rotate-12" />
-              )}
-              <span className="text-2xl font-black tracking-tighter leading-tight text-white">
-                {isRamadan ? ramadanDay : day}
-              </span>
-              {isRamadan && (
-                <span className="text-[7px] font-bold text-white/30 uppercase tracking-tighter -mt-1">يوم مبارك</span>
-              )}
-            </div>
-
-            {/* Day Name & Period Footer */}
-            <div className="bg-black/20 py-1 flex flex-col items-center border-t border-white/10">
-              <span className="text-[8px] font-black uppercase text-white/60 leading-none mb-0.5">
-                {isRamadan ? `${dayName} ${day} ${month}` : dayName}
-              </span>
-              <div className="flex items-center gap-1">
-                {(() => {
-                  const iconProps = { className: "w-2.5 h-2.5" };
-                  switch (timeConfig.icon) {
-                    case 'sunrise': return <Sunrise {...iconProps} className="text-amber-300" />;
-                    case 'sun': return <Sun {...iconProps} className="text-amber-400" />;
-                    case 'cloud-sun': return <CloudSun {...iconProps} className="text-sky-200" />;
-                    case 'sunset': return <Sunset {...iconProps} className="text-orange-400" />;
-                    case 'moon': return <Moon {...iconProps} className="text-indigo-200" />;
-                    default: return <Sun {...iconProps} />;
-                  }
-                })()}
-                <span className="text-[7px] font-bold text-white/30 capitalize">{timeConfig.name}</span>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-
-        {/* Center: Greeting (Smaller & Balanced) */}
-        <div className="flex flex-col items-center gap-1 py-4">
-          <motion.h1
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="text-2xl sm:text-3xl font-black tracking-tight flex items-center justify-center gap-4 leading-none text-center"
-          >
-            <span className="drop-shadow-sm">{displayedText}</span>
-            {isRamadan && isTypingComplete && (
-              <motion.div
-                animate={{ rotate: [0, 5, -5, 0] }}
-                transition={{ duration: 5, repeat: Infinity }}
-              >
-                <Moon className="w-6 h-6 text-amber-400 fill-current drop-shadow-[0_0_10px_rgba(251,191,36,0.4)]" />
-              </motion.div>
-            )}
-          </motion.h1>
-        </div>
-
-        {/* Bottom Row: Ultra-Compact Badges */}
-        <div className="flex items-center justify-center gap-3 mt-1 scale-90 sm:scale-100">
-          {isRamadan && ramadanCountdown && (
-            <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-3xl border border-white/10 text-[10px] font-black shadow-lg">
-              {ramadanTarget === 'الإفطار' ? <Sunset className="w-3.5 h-3.5 text-orange-400" /> : <Sunrise className="w-3.5 h-3.5 text-amber-300" />}
-              <span className="text-white/50">{ramadanTarget}:</span>
-              <span className="font-mono text-white tracking-tight">{ramadanCountdown}</span>
-            </div>
-          )}
-
-          {currentTask && (
+          {/* Notifications */}
+          <div className="relative">
             <button
-              onClick={handleCurrentTaskClick}
-              className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-500/15 backdrop-blur-3xl border border-indigo-400/20 text-[10px] font-black shadow-lg hover:bg-indigo-500/25 transition-all group"
+              onClick={() => setShowNotifHistory(!showNotifHistory)}
+              className={`w-9 h-9 flex items-center justify-center rounded-xl transition-all border backdrop-blur-xl ${showNotifHistory ? 'bg-white/20 border-white/15' : 'bg-white/[0.07] border-white/[0.08] hover:bg-white/[0.14]'} active:scale-95`}
             >
-              <Star className="w-3.5 h-3.5 text-amber-300 fill-current" />
-              <span className="max-w-[120px] truncate">المهمة: {currentTask}</span>
-              <ChevronLeft className="w-3 h-3 text-white/30 group-hover:translate-x-[-2px] transition-transform" />
+              <Bell className="w-4 h-4 text-white/50" />
+              {hasUnreadNotifs && (
+                <motion.span
+                  animate={{ scale: [1, 1.3, 1] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                  className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full shadow-[0_0_8px_rgba(244,63,94,0.6)]"
+                />
+              )}
             </button>
-          )}
+
+            <AnimatePresence>
+              {showNotifHistory && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 8, scale: 0.96 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                  className="absolute top-[calc(100%+8px)] left-0 w-[290px] bg-slate-950/95 backdrop-blur-3xl shadow-[0_20px_60px_-10px_rgba(0,0,0,0.5)] rounded-2xl z-[100] border border-white/[0.08] overflow-hidden"
+                >
+                  <div className="p-3 bg-white/[0.03] border-b border-white/[0.05] flex justify-between items-center px-4">
+                    <span className="text-[9px] font-black uppercase text-white/30 tracking-[0.15em]">الإشعارات</span>
+                    <button onClick={clearHistory} className="text-[8px] font-bold text-rose-400/70 hover:text-rose-400 transition-colors">مسح</button>
+                  </div>
+                  <div className="max-h-[250px] overflow-y-auto p-2 space-y-1">
+                    {notifHistory.length === 0 ? (
+                      <div className="py-10 text-center text-[9px] font-black uppercase text-white/[0.06] tracking-[0.2em]">فارغ</div>
+                    ) : (
+                      notifHistory.map((notif: any, i: number) => (
+                        <motion.div
+                          key={notif.id}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: i * 0.03 }}
+                          className="p-3 bg-white/[0.03] hover:bg-white/[0.07] rounded-xl transition-all border border-white/[0.04] text-right cursor-default"
+                        >
+                          <h4 className="text-[11px] font-black text-white/80 mb-0.5">{notif.title}</h4>
+                          <p className="text-[9px] text-white/30 leading-relaxed">{notif.body}</p>
+                        </motion.div>
+                      ))
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
       </div>
+
+      {/* === HERO GREETING SECTION === */}
+      <div className="relative z-10 flex flex-col items-start w-full flex-1 justify-center px-1 sm:px-2">
+
+        {/* Main Greeting */}
+        <motion.h1
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25, type: "spring", stiffness: 120 }}
+          className="text-[1.65rem] sm:text-3xl font-black tracking-tight leading-[1.2] text-right w-full flex items-center justify-start gap-3"
+        >
+          <span className="drop-shadow-[0_2px_10px_rgba(0,0,0,0.15)]">{displayedText}</span>
+          {!isTypingComplete && (
+            <motion.span
+              animate={{ opacity: [1, 0] }}
+              transition={{ duration: 0.6, repeat: Infinity }}
+              className="inline-block w-[2px] h-6 bg-white/60 rounded-full"
+            />
+          )}
+          {isRamadan && isTypingComplete && (
+            <motion.div
+              initial={{ scale: 0, rotate: -30 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ type: "spring", stiffness: 200, delay: 0.5 }}
+            >
+              <motion.div
+                animate={{ rotate: [0, 8, -8, 0], y: [0, -2, 0] }}
+                transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+              >
+                <Moon className="w-7 h-7 text-amber-400 fill-current drop-shadow-[0_0_15px_rgba(251,191,36,0.5)]" />
+              </motion.div>
+            </motion.div>
+          )}
+        </motion.h1>
+
+        {/* Time of day message */}
+        <motion.p
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="text-[11px] sm:text-xs text-white/30 font-medium mt-1.5 tracking-wide"
+        >
+          {timeConfig.message}
+        </motion.p>
+      </div>
+
+      {/* === BOTTOM BADGES === */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.65 }}
+        className="relative z-10 flex flex-wrap items-center justify-start gap-2.5 mt-4 w-full"
+      >
+        {isRamadan && ramadanCountdown && (
+          <motion.div
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/[0.08] backdrop-blur-xl border border-white/[0.08] text-[10px] font-black shadow-[0_4px_20px_-4px_rgba(0,0,0,0.15)] hover:bg-white/[0.12] transition-all cursor-default"
+          >
+            {ramadanTarget === 'الإفطار' ? (
+              <Sunset className="w-4 h-4 text-orange-400 drop-shadow-[0_0_6px_rgba(251,146,60,0.4)]" />
+            ) : (
+              <Sunrise className="w-4 h-4 text-amber-300 drop-shadow-[0_0_6px_rgba(252,211,77,0.4)]" />
+            )}
+            <span className="text-white/40">{ramadanTarget}</span>
+            <div className="w-px h-3 bg-white/10" />
+            <span className="font-mono text-white/90 tracking-tight text-[11px]">{ramadanCountdown}</span>
+          </motion.div>
+        )}
+
+        {currentTask && (
+          <motion.button
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={handleCurrentTaskClick}
+            className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-indigo-500/[0.1] backdrop-blur-xl border border-indigo-400/[0.12] text-[10px] font-black shadow-[0_4px_20px_-4px_rgba(99,102,241,0.15)] hover:bg-indigo-500/[0.18] transition-all group/task"
+          >
+            <Star className="w-3.5 h-3.5 text-amber-300 fill-current drop-shadow-[0_0_6px_rgba(252,211,77,0.3)]" />
+            <span className="text-white/80 max-w-[130px] truncate">{currentTask}</span>
+            <ChevronLeft className="w-3 h-3 text-white/20 group-hover/task:-translate-x-0.5 transition-transform" />
+          </motion.button>
+        )}
+
+        {/* Stats mini badge */}
+        <div className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-white/[0.05] border border-white/[0.05] text-[9px] font-bold text-white/25">
+          <Check className="w-3 h-3" />
+          <span>{stats.totalCompleted}/{stats.totalTasks}</span>
+        </div>
+      </motion.div>
     </div>
   );
 }

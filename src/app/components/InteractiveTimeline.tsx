@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Sunrise, Sun, Sunset, Moon, Book, BookOpen, Calendar, Check, ChevronLeft, ChevronDown, ChevronUp, Sparkles } from "lucide-react";
 import { usePrayerTimes } from "../hooks/usePrayerTimes";
+import { useRamadan } from "../hooks/useRamadan";
 import { motion, AnimatePresence } from "motion/react";
 import confetti from 'canvas-confetti';
 import {
@@ -9,8 +10,10 @@ import {
   getTodayQuranProgress,
   updateQuranProgress,
   getTodayAthkarProgress,
-  updateAthkarProgress
+  updateAthkarProgress,
+  getQuranBookmark
 } from "../utils/db";
+import { toArabicDigits } from "./QuranViewer";
 
 interface TimelineTask {
   id: string;
@@ -22,6 +25,7 @@ interface TimelineTask {
   isPast: boolean;
   type: "prayer" | "athkar" | "quran";
   storageField?: string;
+  description?: string | null;
 }
 
 interface InteractiveTimelineProps {
@@ -34,6 +38,7 @@ export function InteractiveTimeline({ userId }: InteractiveTimelineProps) {
   const [completionStatus, setCompletionStatus] = useState<Record<string, boolean>>({});
   const [isExpanded, setIsExpanded] = useState(false);
   const prayerTimes = usePrayerTimes();
+  const { isRamadan } = useRamadan();
 
   const currentMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
   const completedCount = Object.values(completionStatus).filter(Boolean).length;
@@ -64,16 +69,28 @@ export function InteractiveTimeline({ userId }: InteractiveTimelineProps) {
     if (!prayerTimes) return;
     const isFriday = new Date().getDay() === 5;
 
+    const [prayers, quranList, athkarList, bookmark] = await Promise.all([
+      getTodayPrayers(userId),
+      getTodayQuranProgress(userId),
+      getTodayAthkarProgress(userId),
+      getQuranBookmark(userId)
+    ]);
+
+    const bookmarkText = bookmark ? `وصلت لـ ${bookmark.surah_name} ص ${toArabicDigits(bookmark.page_number || bookmark.ayah_number)}` : null;
+
     const allTasks: TimelineTask[] = [
       { id: "fajr", title: "صلاة الفجر", time: prayerTimes.Fajr, timeValue: convertToMinutes(prayerTimes.Fajr), icon: Sunrise, isActive: false, isPast: false, type: "prayer", storageField: "fajr" },
       { id: "athkar-morning", title: "أذكار الصباح", time: "بعد الفجر", timeValue: convertToMinutes(prayerTimes.Fajr) + 30, icon: Book, isActive: false, isPast: false, type: "athkar" },
-      { id: "baqarah", title: "سورة البقرة", time: `ص ${Math.floor((new Date().getTime() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000) % 604 + 1}`, timeValue: convertToMinutes(prayerTimes.Fajr) + 60, icon: BookOpen, isActive: false, isPast: false, type: "quran", storageField: "baqarah" },
       ...(isFriday ? [{ id: "kahf", title: "سورة الكهف", time: "الجمعة", timeValue: convertToMinutes(prayerTimes.Dhuhr) - 60, icon: BookOpen, isActive: false, isPast: false, type: "quran" as const, storageField: "kahf" }] : []),
       { id: "dhuhr", title: "صلاة الظهر", time: prayerTimes.Dhuhr, timeValue: convertToMinutes(prayerTimes.Dhuhr), icon: Sun, isActive: false, isPast: false, type: "prayer" as const, storageField: "dhuhr" },
       { id: "asr", title: "صلاة العصر", time: prayerTimes.Asr, timeValue: convertToMinutes(prayerTimes.Asr), icon: Sun, isActive: false, isPast: false, type: "prayer" as const, storageField: "asr" },
       { id: "maghrib", title: "صلاة المغرب", time: prayerTimes.Maghrib, timeValue: convertToMinutes(prayerTimes.Maghrib), icon: Sunset, isActive: false, isPast: false, type: "prayer" as const, storageField: "maghrib" },
       { id: "athkar-evening", title: "أذكار المساء", time: "المغرب", timeValue: convertToMinutes(prayerTimes.Maghrib) + 30, icon: Book, isActive: false, isPast: false, type: "athkar" as const },
       { id: "isha", title: "صلاة العشاء", time: prayerTimes.Isha, timeValue: convertToMinutes(prayerTimes.Isha), icon: Moon, isActive: false, isPast: false, type: "prayer" as const, storageField: "isha" },
+      ...(isRamadan ? [
+        { id: "taraweeh", title: "صلاة التراويح", time: "بعد العشاء", timeValue: convertToMinutes(prayerTimes.Isha) + 20, icon: Moon, isActive: false, isPast: false, type: "prayer" as const, storageField: "taraweeh" },
+        { id: "quran-daily", title: "٢٠ صفحة قرآن", description: bookmarkText, time: "بعد التراويح", timeValue: convertToMinutes(prayerTimes.Isha) + 80, icon: BookOpen, isActive: false, isPast: false, type: "quran" as const, storageField: "quran-daily" },
+      ] : []),
       { id: "mulk", title: "سورة الملك", time: "النوم", timeValue: 23 * 60 + 58, icon: BookOpen, isActive: false, isPast: false, type: "quran" as const, storageField: "mulk" }
     ];
 
@@ -90,11 +107,6 @@ export function InteractiveTimeline({ userId }: InteractiveTimelineProps) {
 
     const status: Record<string, boolean> = {};
     try {
-      const [prayers, quranList, athkarList] = await Promise.all([
-        getTodayPrayers(userId),
-        getTodayQuranProgress(userId),
-        getTodayAthkarProgress(userId),
-      ]);
       allTasks.forEach((task) => {
         if (task.type === "prayer" && task.storageField) status[task.id] = prayers?.[task.storageField] || false;
         else if (task.type === "quran" && task.storageField) status[task.id] = quranList?.find((q: any) => q.surah === task.storageField)?.completed || false;
@@ -131,7 +143,9 @@ export function InteractiveTimeline({ userId }: InteractiveTimelineProps) {
     if (task.type === 'prayer') {
       handleToggleTask(taskId);
     } else {
-      if (task.type === 'quran' && task.storageField) {
+      if (task.id === 'quran-daily') {
+        window.dispatchEvent(new CustomEvent('openQuranBookmark'));
+      } else if (task.type === 'quran' && task.storageField) {
         window.dispatchEvent(new CustomEvent('openQuranSurah', { detail: { surah: task.storageField, openTodayPage: task.storageField === 'baqarah' } }));
       } else if (task.type === 'athkar') {
         window.dispatchEvent(new CustomEvent('openAthkar', { detail: { type: task.id === 'athkar-morning' ? 'morning' : 'evening' } }));
@@ -233,6 +247,11 @@ export function InteractiveTimeline({ userId }: InteractiveTimelineProps) {
                         <h3 className={`font-black text-[15px] ${task.isActive ? 'text-white' : 'text-slate-800 dark:text-slate-200'}`}>
                           {task.title}
                         </h3>
+                        {task.description && (
+                          <p className={`text-[10px] font-bold mt-0.5 ${task.isActive ? 'text-white/60' : 'text-emerald-600/70'}`}>
+                            {task.description}
+                          </p>
+                        )}
                       </div>
 
                       <div className="flex flex-col items-end">
