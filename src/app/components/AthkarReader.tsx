@@ -92,10 +92,32 @@ export function AthkarReader({ initialType }: AthkarReaderProps) {
     }
   };
 
+  // Load incremental progress from localStorage
+  useEffect(() => {
+    if (selectedType && currentUserId) {
+      const key = `athkar_progress_${currentUserId}_${selectedType}`;
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        setProgress(JSON.parse(saved));
+      } else {
+        setProgress({});
+      }
+    }
+  }, [selectedType, currentUserId]);
+
+  // Save incremental progress to localStorage
+  useEffect(() => {
+    if (selectedType && currentUserId && Object.keys(progress).length > 0) {
+      const key = `athkar_progress_${currentUserId}_${selectedType}`;
+      localStorage.setItem(key, JSON.stringify(progress));
+    }
+  }, [progress, selectedType, currentUserId]);
+
   const fetchAthkar = async (type: string) => {
     setLoading(true);
     setSelectedType(type as AthkarType);
-    setProgress({});
+
+    // Don't reset progress here, let the useEffect load it
 
     try {
       let url = '';
@@ -153,11 +175,18 @@ export function AthkarReader({ initialType }: AthkarReaderProps) {
     if (!selectedType || !currentUserId) return;
     if (selectedType !== 'morning' && selectedType !== 'evening') return;
     updateAthkarProgress(currentUserId, selectedType, true);
+    // Clear incremental saved progress once fully completed
+    localStorage.removeItem(`athkar_progress_${currentUserId}_${selectedType}`);
     window.dispatchEvent(new Event('storage'));
     loadProgress();
   };
 
-  const handleReset = () => setProgress({});
+  const handleReset = () => {
+    setProgress({});
+    if (selectedType && currentUserId) {
+      localStorage.removeItem(`athkar_progress_${currentUserId}_${selectedType}`);
+    }
+  };
   const close = () => {
     if (selectedType === 'tasbih') {
       // Save tasbih count if needed (handled inside TasbihPage usually)
@@ -212,21 +241,6 @@ export function AthkarReader({ initialType }: AthkarReaderProps) {
       btnColor: 'bg-slate-900 dark:bg-white text-white dark:text-slate-900',
       barColor: 'bg-indigo-500',
       hoverFill: 'bg-indigo-600/5'
-    },
-    {
-      id: 'tasbih',
-      label: 'المسبحة الإلكترونية',
-      desc: 'اجعل لسانك رطباً بذكر الله في كل وقت ومكان عبر المسبحة الذكية.',
-      icon: Calculator,
-      color: 'emerald',
-      done: false,
-      badge: 'مفتوح',
-      isRecommended: false,
-      iconBg: 'bg-emerald-500',
-      iconColor: 'text-white',
-      btnColor: 'bg-emerald-600 text-white',
-      barColor: 'bg-emerald-400',
-      hoverFill: 'bg-emerald-500/5'
     }
   ];
 

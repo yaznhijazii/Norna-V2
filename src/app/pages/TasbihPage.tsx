@@ -163,18 +163,14 @@ export function TasbihPage() {
                     </AnimatePresence>
 
                     <div className="relative text-center">
-                        <AnimatePresence mode="wait">
-                            <motion.div
-                                key={count}
-                                initial={{ opacity: 0, scale: 0.7, filter: "blur(10px)" }}
-                                animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-                                exit={{ opacity: 0, scale: 1.3, filter: "blur(20px)" }}
-                                transition={{ type: "spring", damping: 15 }}
-                                className="text-[140px] sm:text-[180px] font-black leading-none text-emerald-950 selection:bg-none drop-shadow-[0_10px_30px_rgba(6,78,59,0.1)]"
-                            >
-                                {toArabicNotation(count)}
-                            </motion.div>
-                        </AnimatePresence>
+                        <motion.div
+                            key={count}
+                            initial={{ scale: 0.8, filter: "blur(2px)" }}
+                            animate={{ scale: 1, filter: "blur(0px)" }}
+                            className="text-[140px] sm:text-[180px] font-black leading-none text-emerald-950 selection:bg-none drop-shadow-[0_10px_30px_rgba(6,78,59,0.1)]"
+                        >
+                            {toArabicNotation(count)}
+                        </motion.div>
 
                         <motion.div
                             className="flex flex-col items-center -mt-4 gap-4"
@@ -203,24 +199,26 @@ export function TasbihPage() {
             <div className="w-full relative h-40 overflow-hidden flex items-center justify-center mt-auto">
                 <div className="absolute inset-0 bg-gradient-to-r from-[#f8f9fa] via-transparent to-[#f8f9fa] z-10 pointer-events-none" />
 
-                <div className="flex gap-4 items-center">
+                <motion.div
+                    className="flex gap-4 items-center"
+                    animate={{ x: [20, 0] }}
+                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                    key={count} // Only animate the container position slightly on click
+                >
                     {[...Array(15)].map((_, i) => (
-                        <motion.div
-                            key={`${count}-${i}`}
-                            initial={{ x: 100 }}
-                            animate={{ x: 0 }}
-                            transition={{ type: "spring", stiffness: 100, damping: 20 }}
+                        <div
+                            key={i} // Stable key
                             className={`relative shrink-0 rounded-full shadow-lg border border-white/20
                                 ${i === 7 ? 'w-16 h-16 bg-gradient-to-br from-amber-400 to-amber-700 shadow-amber-900/20 z-20 scale-125' : 'w-10 h-10 bg-gradient-to-br from-emerald-800 to-emerald-950 opacity-40'}
                             `}
                         >
                             {/* Inner Shine */}
                             <div className="absolute top-1 left-2 w-1/3 h-1/3 bg-white/20 rounded-full blur-[1px]" />
-                        </motion.div>
+                        </div>
                     ))}
                     {/* Connector Thread */}
                     <div className="absolute top-1/2 left-0 right-0 h-[1.5px] bg-emerald-950/10 -translate-y-1/2" />
-                </div>
+                </motion.div>
             </div>
 
             {/* Subtle Progress Bar & Total Stats */}

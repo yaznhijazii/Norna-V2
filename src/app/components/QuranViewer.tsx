@@ -81,9 +81,16 @@ const toArabicDigits = (num: number | string) => {
     return num.toString().replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[parseInt(d)]);
 };
 
-export function QuranViewer() {
+interface QuranViewerProps {
+    jumpToBookmark?: boolean;
+    onJumped?: () => void;
+}
+
+export function QuranViewer({ jumpToBookmark, onJumped }: QuranViewerProps) {
     const [surahs, setSurahs] = useState<Surah[]>([]);
     const [selectedSurah, setSelectedSurah] = useState<Surah | null>(null);
+
+
     const [surahData, setSurahData] = useState<SurahData | null>(null);
     const [loading, setLoading] = useState(false);
     const [loadingAyahs, setLoadingAyahs] = useState(false);
@@ -215,6 +222,8 @@ export function QuranViewer() {
     const [currentUserId, setCurrentUserId] = useState<string>('');
     const [userBookmark, setUserBookmark] = useState<UserBookmark | null>(null);
 
+
+
     const [activeKhatma, setActiveKhatma] = useState<Khatma | null>(null);
     const [partner, setPartner] = useState<any>(null);
     const [sharedKhatma, setSharedKhatma] = useState<any>(null);
@@ -336,6 +345,13 @@ export function QuranViewer() {
             }
         }
     };
+
+    useEffect(() => {
+        if (jumpToBookmark && surahs.length > 0 && userBookmark) {
+            handleContinueReading();
+            onJumped?.();
+        }
+    }, [jumpToBookmark, surahs, userBookmark]);
 
     const getTotalPages = () => {
         if (!selectedSurah) return 1;
@@ -719,21 +735,22 @@ export function QuranViewer() {
                                 {userBookmark ? (
                                     <div className="bg-gradient-to-br from-[#064e3b] to-[#065f46] rounded-[2.5rem] p-7 text-white shadow-xl shadow-emerald-900/10 relative overflow-hidden group hover:scale-[1.02] transition-all cursor-pointer h-full min-h-[200px] border border-white/5" onClick={handleContinueReading}>
                                         <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-white/10 transition-colors"></div>
-                                        <div className="relative z-10 flex flex-col justify-between h-full">
-                                            <div className="flex flex-col h-full justify-between">
-                                                <div className="flex items-start justify-between mb-2">
-                                                    <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center backdrop-blur-md border border-white/10">
-                                                        <Bookmark className="w-6 h-6 text-white" />
-                                                    </div>
-                                                    <div className="flex flex-col items-end">
-                                                        <span className="bg-emerald-400/20 text-emerald-100 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest backdrop-blur-sm border border-emerald-400/20">تابِع تلاوتك</span>
-                                                        <span className="text-[10px] text-white/40 font-bold mt-1">آخر قراءة</span>
-                                                    </div>
+                                        <div className="relative z-10 flex flex-col h-full">
+                                            {/* Top Section */}
+                                            <div className="flex items-start justify-between mb-4">
+                                                <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center backdrop-blur-md border border-white/10 shadow-inner">
+                                                    <Bookmark className="w-6 h-6 text-white" />
                                                 </div>
-                                                <div>
-                                                    <h3 className="text-4xl font-amiri font-bold mb-1 leading-tight">{userBookmark.surah_name}</h3>
-                                                    <p className="text-emerald-100/70 font-bold text-sm">الصفحة {userBookmark.surah_number?.toLocaleString('ar-EG') || '١'} • الآية {toArabicDigits(userBookmark.ayah_number)}</p>
+                                                <div className="flex flex-col items-end">
+                                                    <span className="bg-emerald-400/20 text-emerald-100 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest backdrop-blur-sm border border-emerald-400/20">تابِع تلاوتك</span>
+                                                    <span className="text-[10px] text-white/40 font-bold mt-1">آخر قراءة</span>
                                                 </div>
+                                            </div>
+
+                                            {/* Surah Info - Adjusted to be centered vertically within the card */}
+                                            <div className="flex-1 flex flex-col justify-center pb-2">
+                                                <h3 className="text-[42px] font-amiri font-bold mb-1 leading-tight">{userBookmark.surah_name}</h3>
+                                                <p className="text-emerald-100/70 font-bold text-sm opacity-90">الصفحة {userBookmark.surah_number?.toLocaleString('ar-EG') || '١'} • الآية {toArabicDigits(userBookmark.ayah_number)}</p>
                                             </div>
                                         </div>
                                     </div>

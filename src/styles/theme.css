@@ -240,3 +240,23 @@
     background: rgba(0, 0, 0, 0.25);
   }
 }
+
+/* Ramadan Mode Overrides */
+[data-ramadan="true"] {
+  --primary: #f59e0b;
+  --ring: #f59e0b;
+}
+
+.dark[data-ramadan="true"] {
+  --primary: #fbbf24;
+  --ring: #fbbf24;
+}
+
+.ramadan-mode .premium-card {
+  border-color: rgba(245, 158, 11, 0.2);
+}
+
+.ramadan-mode .premium-card:hover {
+  border-color: rgba(245, 158, 11, 0.4);
+  box-shadow: 0 20px 40px -12px rgba(245, 158, 11, 0.15);
+}

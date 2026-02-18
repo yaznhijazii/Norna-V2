@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 
-// Approximate Ramadan 2026 dates: Feb 18 to Mar 19
-const RAMADAN_START_2026 = new Date('2026-02-18T00:00:00');
+// Adjusted Ramadan 2026 dates for user location: Starts Feb 19, 2026
+const RAMADAN_START_2026 = new Date('2026-02-19T00:00:00');
 const RAMADAN_END_2026 = new Date('2026-03-20T00:00:00');
 
 export function useRamadan() {
     const [isRamadan, setIsRamadan] = useState(false);
     const [isApproaching, setIsApproaching] = useState(false);
     const [daysUntil, setDaysUntil] = useState(0);
+    const [ramadanDay, setRamadanDay] = useState<number | null>(null);
 
     useEffect(() => {
         const checkRamadan = () => {
@@ -17,8 +18,20 @@ export function useRamadan() {
             const savedMode = localStorage.getItem('ramadanMode');
             const isManualMode = savedMode === 'true';
 
-            // The user wants to manually activate/deactivate it instead of automatic behavior
-            setIsRamadan(isManualMode);
+            // Automatic check
+            const isAutoRamadan = now >= RAMADAN_START_2026 && now <= RAMADAN_END_2026;
+
+            const active = isManualMode || isAutoRamadan;
+            setIsRamadan(active);
+
+            if (active) {
+                // Calculate Ramadan Day (Day 1 starts on RAMADAN_START_2026)
+                const diffTime = now.getTime() - RAMADAN_START_2026.getTime();
+                const day = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                setRamadanDay(day > 0 ? day : 1); // Fallback to 1 if manual mode is on before start
+            } else {
+                setRamadanDay(null);
+            }
 
             const diff = RAMADAN_START_2026.getTime() - now.getTime();
             const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
@@ -33,9 +46,8 @@ export function useRamadan() {
         };
 
         checkRamadan();
-        const interval = setInterval(checkRamadan, 3600000); // Check every hour
+        const interval = setInterval(checkRamadan, 3600000);
 
-        // Listen for storage changes to update UI immediately when setting changes
         const handleStorage = () => checkRamadan();
         window.addEventListener('storage', handleStorage);
         window.addEventListener('ramadanModeChange', handleStorage);
@@ -47,5 +59,5 @@ export function useRamadan() {
         };
     }, []);
 
-    return { isRamadan, isApproaching, daysUntil };
+    return { isRamadan, isApproaching, daysUntil, ramadanDay };
 }

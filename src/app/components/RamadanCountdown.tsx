@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Clock, Moon, Sparkles, Sunrise } from 'lucide-react';
+import { Clock, Moon, Sparkles, Sunrise, Star } from 'lucide-react';
 import { usePrayerTimes } from '../hooks/usePrayerTimes';
 import { useRamadan } from '../hooks/useRamadan';
 
 export function RamadanCountdown() {
-    const { isRamadan, isApproaching, daysUntil } = useRamadan();
+    const { isRamadan } = useRamadan();
     const prayerTimes = usePrayerTimes();
     const [countdown, setCountdown] = useState<string>('');
     const [targetName, setTargetName] = useState<string>('');
@@ -43,7 +43,6 @@ export function RamadanCountdown() {
                 targetMinutes = maghrib;
                 name = 'الإفطار';
             } else {
-                // After Maghrib, next target is Fajr tomorrow
                 targetMinutes = fajr + 24 * 60;
                 name = 'السحور';
             }
@@ -67,68 +66,78 @@ export function RamadanCountdown() {
 
     return (
         <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="relative overflow-hidden rounded-[2.5rem] p-6 mb-8 border border-amber-200/30 bg-gradient-to-br from-indigo-950 via-purple-900 to-indigo-900 shadow-2xl shadow-indigo-500/20"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="group relative overflow-hidden rounded-[2.5rem] p-8 mb-8 border border-white/10 shadow-2xl"
         >
-            {/* Decorative Elements */}
-            <div className="absolute top-0 right-0 w-32 h-32 bg-amber-400/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
-            <div className="absolute bottom-0 left-0 w-24 h-24 bg-purple-500/10 rounded-full blur-3xl -ml-8 -mb-8"></div>
+            {/* Real Premium Background */}
+            <div className="absolute inset-0 bg-gradient-to-br from-[#1a1c2c] via-[#4a192c] to-[#1a1c2c] transition-colors duration-700"></div>
 
-            {/* Sparkles / Stars Animation */}
-            <div className="absolute inset-0 opacity-20 pointer-events-none">
-                {[...Array(6)].map((_, i) => (
-                    <motion.div
-                        key={i}
-                        animate={{
-                            opacity: [0.2, 0.8, 0.2],
-                            scale: [1, 1.2, 1],
-                        }}
-                        transition={{
-                            duration: 2 + Math.random() * 2,
-                            repeat: Infinity,
-                            delay: Math.random() * 2
-                        }}
-                        className="absolute bg-amber-300 rounded-full"
-                        style={{
-                            width: Math.random() * 3 + 1 + 'px',
-                            height: Math.random() * 3 + 1 + 'px',
-                            top: Math.random() * 100 + '%',
-                            left: Math.random() * 100 + '%',
-                        }}
-                    />
-                ))}
+            {/* Animated Mesh Gradients within card */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-30">
+                <motion.div
+                    animate={{ x: [0, 50, 0], y: [0, 30, 0] }}
+                    transition={{ duration: 10, repeat: Infinity }}
+                    className="absolute -top-20 -left-20 w-64 h-64 bg-amber-500 rounded-full blur-[80px]"
+                />
+                <motion.div
+                    animate={{ x: [0, -40, 0], y: [0, -20, 0] }}
+                    transition={{ duration: 12, repeat: Infinity }}
+                    className="absolute -bottom-20 -right-20 w-64 h-64 bg-purple-600 rounded-full blur-[80px]"
+                />
             </div>
 
-            <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
-                <div className="text-right">
-                    <div className="flex items-center gap-2 mb-2">
-                        <Sparkles className="w-5 h-5 text-amber-400 animate-pulse" />
-                        <span className="text-amber-200 font-black text-xs uppercase tracking-widest">
+            {/* Islamic Pattern Overlay */}
+            <div className="absolute inset-0 opacity-[0.03] grayscale invert pointer-events-none mix-blend-overlay"
+                style={{ backgroundImage: 'url("https://www.transparenttextures.com/patterns/arabesque.png")' }}></div>
+
+            <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
+                <div className="text-right flex-1">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center">
+                            <Star className="w-4 h-4 text-amber-400 fill-amber-400/20" />
+                        </div>
+                        <span className="text-amber-200 font-black text-[10px] uppercase tracking-[0.3em]">
                             رمضان مبارك
                         </span>
                     </div>
-                    <h2 className="text-3xl font-black text-white mb-1 font-amiri">
-                        الوقت المتبقي لـ {targetName}
+
+                    <h2 className="text-3xl font-black text-white mb-2 font-amiri tracking-tight">
+                        الوقت المتبقي لـ <span className="text-amber-400">{targetName}</span>
                     </h2>
-                    <p className="text-indigo-200 text-sm font-medium opacity-80">
+
+                    <p className="text-indigo-200/60 text-xs font-bold uppercase tracking-widest">
                         تقبل الله طاعتكم وصالح أعمالكم
                     </p>
                 </div>
 
-                <div className="flex flex-col items-center justify-center bg-white/10 backdrop-blur-xl border border-white/20 rounded-[2rem] px-8 py-4 shadow-xl">
-                    <div className="flex items-center gap-3 mb-1">
-                        {targetName === 'الإفطار' ? (
-                            <Moon className="w-6 h-6 text-amber-400 fill-amber-400/20" />
-                        ) : (
-                            <Sunrise className="w-6 h-6 text-amber-400" />
-                        )}
-                        <span className="text-4xl font-mono font-black text-white tracking-widest tabular-nums">
-                            {countdown}
-                        </span>
+                <div className="relative">
+                    {/* Glowing Ring behind Time */}
+                    <div className="absolute inset-[-20px] bg-amber-500/10 blur-2xl rounded-full animate-pulse"></div>
+
+                    <div className="relative flex flex-col items-center justify-center bg-white/5 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] px-10 py-6 shadow-2xl">
+                        <div className="flex items-center gap-5">
+                            <div className={`p-3 rounded-2xl ${targetName === 'الإفطار' ? 'bg-amber-500 text-white' : 'bg-indigo-500 text-white shadow-lg'}`}>
+                                {targetName === 'الإفطار' ? <Moon className="w-6 h-6" /> : <Sunrise className="w-6 h-6" />}
+                            </div>
+                            <div className="flex flex-col items-center">
+                                <span className="text-[44px] font-black text-white leading-none tabular-nums tracking-tighter">
+                                    {countdown}
+                                </span>
+                                <div className="flex gap-4 mt-2">
+                                    <span className="text-[8px] font-black text-white/40 uppercase tracking-widest">ساعة</span>
+                                    <span className="text-[8px] font-black text-white/40 uppercase tracking-widest">دقيقة</span>
+                                    <span className="text-[8px] font-black text-white/40 uppercase tracking-widest">ثانية</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <span className="text-[10px] font-black text-amber-200/60 uppercase tracking-[0.2em]">ساعة : دقيقة : ثانية</span>
                 </div>
+            </div>
+
+            {/* Corner Decorative Star */}
+            <div className="absolute top-4 left-4 opacity-10">
+                <Star className="w-12 h-12 text-white" />
             </div>
         </motion.div>
     );

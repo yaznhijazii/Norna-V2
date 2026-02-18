@@ -231,8 +231,9 @@ export function PodcastCard() {
             <p className="text-[11px] font-bold text-purple-300 uppercase tracking-widest mt-1.5 opacity-80">برنامج وعي • الحلقة المختارة</p>
           </div>
           {progress === 100 && (
-            <div className="bg-emerald-500/20 border border-emerald-500/50 px-3 py-1.5 rounded-xl backdrop-blur-md">
-              <span className="text-emerald-400 text-[10px] font-black uppercase tracking-tighter shrink-0">✓ مكتمل</span>
+            <div className="bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-lg backdrop-blur-md flex items-center gap-1.5">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]" />
+              <span className="text-emerald-400 text-[9px] font-black uppercase tracking-tight shrink-0">مكتمل</span>
             </div>
           )}
         </div>
@@ -308,11 +309,11 @@ export function PodcastCard() {
                       </div>
                     </div>
                     <div className="text-center space-y-1">
-                      <p className="text-white font-bold">🎧 استمع للبودكاست</p>
-                      <p className="text-white/70 text-xs px-4 line-clamp-2">{podcast.title}</p>
+                      <p className="text-white font-bold text-right">استمع للبودكاست</p>
+                      <p className="text-white/70 text-xs px-4 line-clamp-2 text-right">{podcast.title}</p>
                       <div className="flex items-center gap-2 justify-center mt-2">
                         <div className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-pulse"></div>
-                        <span className="text-purple-300 text-xs">4 أجزاء متاحة</span>
+                        <span className="text-purple-300 text-xs text-right">4 أجزاء متاحة</span>
                       </div>
                     </div>
                   </div>
@@ -359,10 +360,10 @@ export function PodcastCard() {
                         <Headphones className="w-12 h-12 text-white" />
                       </div>
                     </div>
-                    <p className="text-white text-sm font-bold text-center line-clamp-2 px-2">{podcast.title}</p>
+                    <p className="text-white text-sm font-bold text-center line-clamp-2 px-2 text-right">{podcast.title}</p>
                     <div className="flex items-center gap-2">
                       <div className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-pulse"></div>
-                      <span className="text-purple-300 text-xs">الجزء {currentPartIndex + 1} من {podcast.audioParts.length}</span>
+                      <span className="text-purple-300 text-xs text-right">الجزء {currentPartIndex + 1} من {podcast.audioParts.length}</span>
                     </div>
                   </div>
 
@@ -370,8 +371,8 @@ export function PodcastCard() {
                   <div className="bg-white/10 rounded-lg p-3 backdrop-blur-sm mb-4">
                     {audioError ? (
                       <div className="text-center py-6">
-                        <p className="text-white/90 mb-2">⚠️ الجزء {currentPartIndex + 1} غير متوفر</p>
-                        <p className="text-white/60 text-xs mb-3">الملف الصوتي مفقود على GitHub</p>
+                        <p className="text-white/90 mb-2 font-black text-right">الجزء {currentPartIndex + 1} غير متوفر</p>
+                        <p className="text-white/60 text-xs mb-3 text-right">الملف الصوتي مفقود على GitHub</p>
                         <div className="flex gap-2 justify-center">
                           {currentPartIndex > 0 && (
                             <button
@@ -507,7 +508,7 @@ export function PodcastCard() {
             {/* Progress Tracker - Cinematic Design */}
             <div className="mt-5 p-4 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10">
               <div className="flex items-center justify-between mb-4">
-                <span className="text-purple-200 text-[10px] font-black uppercase tracking-widest">مشاهدة الحلقة</span>
+                <span className="text-purple-200 text-[10px] font-black uppercase tracking-widest text-right w-full">مشاهدة الحلقة</span>
                 <div className="flex items-center gap-2 bg-purple-500/10 px-2 py-1 rounded-lg">
                   <div className={`w-1.5 h-1.5 rounded-full ${progress > 0 ? 'bg-emerald-400 animate-pulse' : 'bg-gray-500'}`}></div>
                   <span className="text-white font-black text-base">{progress}%</span>
@@ -534,12 +535,12 @@ export function PodcastCard() {
               <div className="grid grid-cols-5 gap-2">
                 <button
                   onClick={() => saveProgress(100)}
-                  className={`py-2 px-1 rounded-lg text-xs font-bold transition-all ${progress === 100
-                    ? 'bg-green-600 text-white shadow-lg shadow-green-500/50'
-                    : 'bg-green-900/30 text-green-200 hover:bg-green-800/40 border border-green-700/50'
+                  className={`py-2 px-1 rounded-lg text-xs font-bold transition-all flex items-center justify-center ${progress === 100
+                    ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/50'
+                    : 'bg-emerald-900/30 text-emerald-200 hover:bg-emerald-800/40 border border-emerald-700/50'
                     }`}
                 >
-                  ✓
+                  <div className={`w-2 h-2 rounded-full ${progress === 100 ? 'bg-white' : 'bg-emerald-500'}`} />
                 </button>
                 <button
                   onClick={() => saveProgress(75)}
@@ -585,7 +586,7 @@ export function PodcastCard() {
               {!showHighlightForm ? (
                 <button
                   onClick={() => setShowHighlightForm(true)}
-                  className="w-full py-3 bg-white/5 hover:bg-white/10 border border-dashed border-white/20 rounded-2xl text-[11px] font-black text-white/40 uppercase tracking-widest transition-all"
+                  className="w-full py-3 bg-white/5 hover:bg-white/10 border border-dashed border-white/20 rounded-2xl text-[11px] font-black text-white/40 uppercase tracking-widest transition-all text-right px-6"
                 >
                   + أضف فائدة من الحلقة
                 </button>
@@ -599,7 +600,8 @@ export function PodcastCard() {
                     value={highlightText}
                     onChange={(e) => setHighlightText(e.target.value)}
                     placeholder="ما الذي تعلمته من هذه الحلقة؟"
-                    className="w-full bg-slate-900/50 border border-white/10 rounded-xl p-3 text-xs text-white placeholder:text-white/20 focus:outline-none focus:border-purple-500/50 min-h-[80px] resize-none"
+                    className="w-full bg-slate-900/50 border border-white/10 rounded-xl p-3 text-xs text-white placeholder:text-white/20 focus:outline-none focus:border-purple-500/50 min-h-[80px] resize-none text-right"
+                    dir="rtl"
                   />
                   <div className="flex gap-2">
                     <button

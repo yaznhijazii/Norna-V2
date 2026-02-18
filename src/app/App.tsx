@@ -46,6 +46,7 @@ export default function App() {
   // Navigation State
   const [navInitialSurah, setNavInitialSurah] = useState<{ number: number; name: string; englishName: string; numberOfAyahs: number } | null>(null);
   const [navInitialAzkar, setNavInitialAzkar] = useState<'morning' | 'evening' | null>(null);
+  const [navJumpToBookmark, setNavJumpToBookmark] = useState(false);
 
   // Listen for timeline events
   useEffect(() => {
@@ -66,13 +67,20 @@ export default function App() {
           englishName: '',
           numberOfAyahs: 0
         });
+        setNavJumpToBookmark(false);
         setActiveTab('quran');
       }
     };
 
+    const handleOpenBookmark = () => {
+      setNavJumpToBookmark(true);
+      setNavInitialSurah(null);
+      setActiveTab('quran');
+    };
+
     const handleOpenAthkar = (e: any) => {
       const type = e.detail?.type;
-      if (type === 'morning' || type === 'evening' || type === 'israa_miraj') {
+      if (type === 'morning' || type === 'evening' || type === 'israa_miraj' || type === 'tasbih') {
         setNavInitialAzkar(type);
         setActiveTab('azkar');
       }
@@ -88,11 +96,13 @@ export default function App() {
     };
 
     window.addEventListener('openQuranSurah', handleOpenQuran);
+    window.addEventListener('openQuranBookmark', handleOpenBookmark);
     window.addEventListener('openAthkar', handleOpenAthkar);
     window.addEventListener('partnerActivity', handlePartnerActivity);
 
     return () => {
       window.removeEventListener('openQuranSurah', handleOpenQuran);
+      window.removeEventListener('openQuranBookmark', handleOpenBookmark);
       window.removeEventListener('openAthkar', handleOpenAthkar);
       window.removeEventListener('partnerActivity', handlePartnerActivity);
     };
@@ -415,6 +425,7 @@ export default function App() {
 
   return (
     <div
+      data-ramadan={isRamadan}
       className={`min-h-screen relative overflow-hidden premium-bg-layout ${isRamadan ? 'ramadan-mode' : ''}`}
       style={{
         fontFamily: "'IBM Plex Sans Arabic', sans-serif",
@@ -423,9 +434,9 @@ export default function App() {
     >
       {/* Premium Background Layer */}
       <div className="mesh-gradient">
-        <div className={`mesh-sphere w-[80%] h-[80%] -top-[20%] -left-[10%] ${isRamadan ? 'bg-amber-500/20' : 'bg-indigo-500/20'}`}></div>
-        <div className={`mesh-sphere w-[70%] h-[70%] -bottom-[10%] -right-[10%] ${isRamadan ? 'bg-purple-500/20' : 'bg-purple-500/20'} animate-[meshFloat_25s_infinite_alternate-reverse]`}></div>
-        <div className={`mesh-sphere w-[60%] h-[60%] top-[20%] left-[30%] ${isRamadan ? 'bg-amber-200/10' : 'bg-emerald-500/10'} animate-[meshFloat_30s_infinite_alternate]`}></div>
+        <div className={`mesh-sphere w-[80%] h-[80%] -top-[20%] -left-[10%] ${isRamadan ? 'bg-amber-600/20' : 'bg-indigo-500/20'}`}></div>
+        <div className={`mesh-sphere w-[70%] h-[70%] -bottom-[10%] -right-[10%] ${isRamadan ? 'bg-purple-900/40' : 'bg-purple-500/20'} animate-[meshFloat_25s_infinite_alternate-reverse]`}></div>
+        <div className={`mesh-sphere w-[60%] h-[60%] top-[20%] left-[30%] ${isRamadan ? 'bg-amber-400/10' : 'bg-emerald-500/10'} animate-[meshFloat_30s_infinite_alternate]`}></div>
       </div>
 
       {/* Noise Grain for High-End Texture */}
@@ -517,7 +528,13 @@ export default function App() {
           />
         )}
         {activeTab === 'player' && <PlayerPage />}
-        {activeTab === 'quran' && <QuranPage initialSurah={navInitialSurah?.name} />}
+        {activeTab === 'quran' && (
+          <QuranPage
+            initialSurah={navInitialSurah?.name}
+            jumpToBookmark={navJumpToBookmark}
+            onJumped={() => setNavJumpToBookmark(false)}
+          />
+        )}
         {activeTab === 'azkar' && <AzkarPage initialType={navInitialAzkar} />}
         {activeTab === 'qibla' && <QiblaPage onBack={() => setActiveTab('home')} />}
         {activeTab === 'partner' && (
@@ -548,72 +565,74 @@ function RamadanDecorations({ isRamadan }: { isRamadan: boolean }) {
   if (!isRamadan) return null;
 
   return (
-    <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-      {/* Stars in the background */}
-      {[...Array(12)].map((_, i) => (
+    <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden select-none">
+      {/* Premium Shimmering Stars */}
+      {[...Array(24)].map((_, i) => (
         <motion.div
           key={i}
           initial={{ opacity: 0 }}
           animate={{
-            opacity: [0.1, 0.4, 0.1],
-            scale: [1, 1.2, 1]
+            opacity: [0.1, 0.7, 0.1],
+            scale: [1, 1.4, 1],
           }}
           transition={{
-            duration: 3 + Math.random() * 3,
+            duration: 4 + Math.random() * 4,
             repeat: Infinity,
             delay: Math.random() * 5
           }}
-          className="absolute bg-amber-200 rounded-full blur-[1px]"
+          className="absolute bg-amber-100 rounded-full blur-[0.5px] shadow-[0_0_8px_rgba(251,191,36,0.5)]"
           style={{
-            width: Math.random() * 3 + 1 + 'px',
-            height: Math.random() * 3 + 1 + 'px',
+            width: Math.random() * 2 + 0.5 + 'px',
+            height: Math.random() * 2 + 0.5 + 'px',
             top: Math.random() * 100 + '%',
             left: Math.random() * 100 + '%',
           }}
         />
       ))}
 
-      {/* Main Lantern (Left) */}
+      {/* Elegant Crescent Moon */}
       <motion.div
-        animate={{
-          y: [0, 20, 0],
-          rotate: [-2, 2, -2]
-        }}
-        transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
-        className="absolute -top-10 left-[10%] text-amber-500/20 drop-shadow-[0_0_15px_rgba(245,158,11,0.3)]"
+        initial={{ opacity: 0, x: 100 }}
+        animate={{ opacity: 0.1, x: 0 }}
+        transition={{ duration: 2.5, ease: "easeOut" }}
+        className="absolute top-[8%] right-[5%] text-amber-200"
       >
-        <svg width="60" height="120" viewBox="0 0 60 120" fill="currentColor">
-          <path d="M30 0V15M15 15H45L40 25H20L15 15ZM10 25L0 45H60L50 25H10ZM0 45L10 90H50L60 45H0ZM10 90L15 105H45L50 90H10ZM25 105V120M35 105V120" />
-          <rect x="25" y="50" width="10" height="30" rx="2" fill="white" opacity="0.3" />
+        <svg width="240" height="240" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1-8.313-12.454z" />
         </svg>
       </motion.div>
 
-      {/* Small Lantern (Right) */}
+      {/* Main Traditional Lantern (Left) */}
       <motion.div
         animate={{
           y: [0, 15, 0],
-          rotate: [2, -2, 2]
+          rotate: [-3, 3, -3]
         }}
-        transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
-        className="absolute -top-5 right-[15%] text-indigo-400/20 drop-shadow-[0_0_10px_rgba(129,140,248,0.2)]"
+        transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut' }}
+        className="absolute -top-10 left-[12%] text-amber-500/20 drop-shadow-[0_0_25px_rgba(245,158,11,0.4)]"
       >
-        <svg width="45" height="90" viewBox="0 0 45 90" fill="currentColor">
-          <path d="M22.5 0V10M12 10H33L30 18H15L12 10ZM5 18L0 35H45L40 18H5ZM0 35L8 70H37L45 35H0ZM10 70L15 80H30L35 70H10Z" />
-          <circle cx="22.5" cy="45" r="5" fill="white" opacity="0.2" />
+        <svg width="80" height="160" viewBox="0 0 60 120" fill="currentColor">
+          <path d="M30 0V15M15 15H45L40 25H20L15 15ZM10 25L0 45H60L50 25H10ZM0 45L10 90H50L60 45H0ZM10 90L15 105H45L50 90H10ZM25 105V120M35 105V120" />
+          <rect x="25" y="50" width="10" height="30" rx="2" fill="white" opacity="0.3">
+            <animate attributeName="opacity" values="0.1;0.4;0.1" dur="2s" repeatCount="indefinite" />
+          </rect>
         </svg>
       </motion.div>
 
-      {/* Floating Fanous (Bottom Left) */}
+      {/* Secondary Lantern (Right) */}
       <motion.div
         animate={{
-          y: [0, -10, 0],
-          x: [0, 5, 0]
+          y: [0, 10, 0],
+          rotate: [2, -2, 2]
         }}
-        transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
-        className="absolute bottom-[20%] left-[5%] text-amber-600/10"
+        transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
+        className="absolute -top-5 right-[18%] text-amber-600/15 drop-shadow-[0_0_15px_rgba(217,119,6,0.2)]"
       >
-        <svg width="40" height="70" viewBox="0 0 40 70" fill="currentColor">
-          <path d="M20 0L25 10H15L20 0ZM10 10H30L35 25H5L10 10ZM5 25L10 55H30L35 25H5ZM12 55L15 65H25L28 55H12Z" />
+        <svg width="50" height="100" viewBox="0 0 45 90" fill="currentColor">
+          <path d="M22.5 0V10M12 10H33L30 18H15L12 10ZM5 18L0 35H45L40 18H5ZM0 35L8 70H37L45 35H0ZM10 70L15 80H30L35 70H10Z" />
+          <circle cx="22.5" cy="45" r="4" fill="white" opacity="0.2">
+            <animate attributeName="opacity" values="0.2;0.6;0.2" dur="3s" repeatCount="indefinite" />
+          </circle>
         </svg>
       </motion.div>
     </div>

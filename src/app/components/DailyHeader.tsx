@@ -4,7 +4,6 @@ import { InAppNotification } from './NotificationBanner';
 import { motion, AnimatePresence } from 'motion/react';
 import { TasbihIcon } from './TasbihIcon';
 import { useTimeOfDay, timeOfDayConfig } from "../hooks/useTimeOfDay";
-import { QiblaCompass } from "./QiblaCompass";
 import { MoodSelector } from "./MoodSelector";
 import { useRamadan } from "../hooks/useRamadan";
 import { usePrayerTimes } from "../hooks/usePrayerTimes";
@@ -32,7 +31,6 @@ interface DailyHeaderProps {
   partnerName?: string;
   onPartnerStatsClick?: () => void;
   onSettingsClick?: () => void;
-  onQiblaClick?: () => void;
   hasPartner?: boolean;
 }
 
@@ -42,7 +40,6 @@ export function DailyHeader({
   partnerName,
   onPartnerStatsClick,
   onSettingsClick,
-  onQiblaClick,
   hasPartner,
 }: DailyHeaderProps) {
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -66,7 +63,7 @@ export function DailyHeader({
 
   // Extract first name only
   const firstName = userName ? userName.split(" ")[0] : "";
-  const { isRamadan } = useRamadan();
+  const { isRamadan, ramadanDay } = useRamadan();
   const greetingText = isRamadan
     ? `رمضان كريم ${firstName ? `يا ${firstName}` : ""} `
     : `السلام عليكم ورحمة الله ${firstName ? `يا ${firstName}` : ""} `;
@@ -484,185 +481,155 @@ export function DailyHeader({
 
   return (
     <div
-      className={`relative bg-gradient-to-br ${timeConfig.headerGradient} rounded-[2.5rem] p-5 sm:p-6 shadow-[0_20px_60px_rgba(0,0,0,0.1)] text-white transition-all duration-1000 overflow-hidden group border border-white/20 backdrop-blur-2xl ring-1 ring-white/10`}
+      className={`relative bg-gradient-to-br ${timeConfig.headerGradient} rounded-[2rem] p-5 sm:p-7 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.15)] text-white transition-all duration-1000 group border border-white/20 backdrop-blur-2xl ring-1 ring-white/5 overflow-hidden min-h-[190px] flex flex-col justify-center`}
     >
-      {/* Subtle Premium Background */}
+      {/* Sleek Mesh Background */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2" />
-        <div className="absolute bottom-0 left-0 w-48 h-48 bg-purple-500/10 rounded-full blur-[60px] translate-y-1/2 -translate-x-1/4" />
-        {timeOfDay === 'night' && (
-          <div className="absolute inset-0 opacity-[0.05] bg-[url('https://www.transparenttextures.com/patterns/stardust.png')]" />
-        )}
+        <motion.div
+          animate={{ x: [0, 20, 0], opacity: [0.1, 0.2, 0.1] }}
+          transition={{ duration: 10, repeat: Infinity }}
+          className="absolute -top-20 -right-20 w-[300px] h-[300px] bg-white/10 rounded-full blur-[80px]"
+        />
+        <div className="absolute inset-0 opacity-[0.02] bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] mix-blend-overlay" />
       </div>
 
-      <div className="relative z-10 space-y-5">
-        {/* Top Navigation & Info */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-xl flex items-center justify-center border border-white/30"
-            >
-              {(() => {
-                switch (timeConfig.icon) {
-                  case 'sunrise': return <Sunrise className="w-6 h-6 text-amber-300" />;
-                  case 'sun': return <Sun className="w-6 h-6 text-amber-400" />;
-                  case 'cloud-sun': return <CloudSun className="w-6 h-6 text-sky-300" />;
-                  case 'sunset': return <Sunset className="w-6 h-6 text-orange-400" />;
-                  case 'moon': return <Moon className="w-6 h-6 text-indigo-200" />;
-                  default: return <Sun className="w-6 h-6" />;
-                }
-              })()}
-            </motion.div>
-            <div className="space-y-0.5 cursor-pointer" onClick={() => setShowRealTime(!showRealTime)}>
-              <div className="flex items-center gap-2 text-white/60">
-                <span className="text-[9px] font-black uppercase tracking-[0.2em]">{timeConfig.name}</span>
-                <span className="w-1 h-1 bg-white/30 rounded-full" />
-                <span className="text-[10px] font-bold text-white/80">{dayName}، {day} {month}</span>
-              </div>
-              <h1 className="text-xl sm:text-2xl font-black flex items-center gap-2">
-                <span>{displayedText}</span>
-                {isRamadan && isTypingComplete && (
-                  <Moon className="w-5 h-5 text-amber-400 fill-current drop-shadow-[0_0_10px_rgba(251,191,36,0.3)]" />
-                )}
-              </h1>
-            </div>
-          </div>
+      {/* Top Right: Compact Actions */}
+      <div className="absolute top-4 right-4 flex items-center gap-2 z-20">
+        <button
+          onClick={onSettingsClick}
+          className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/10 backdrop-blur-3xl border border-white/10 hover:bg-white/20 transition-all active:scale-95 group/btn"
+        >
+          <Settings className="w-4 h-4 text-white/70 group-hover/btn:rotate-90 transition-transform duration-700" />
+        </button>
+        <div className="relative">
+          <button
+            onClick={() => setShowNotifHistory(!showNotifHistory)}
+            className={`w-9 h-9 flex items-center justify-center rounded-xl transition-all border backdrop-blur-3xl ${showNotifHistory ? 'bg-white/30 border-white/20' : 'bg-white/10 border-white/10 hover:bg-white/20'} active:scale-95`}
+          >
+            <Bell className="w-4 h-4 text-white/70" />
+            {hasUnreadNotifs && (
+              <span className="absolute top-2.5 right-2.5 w-1.5 h-1.5 bg-rose-500 rounded-full border border-indigo-600 animate-pulse" />
+            )}
+          </button>
 
-          <div className="flex items-center gap-2.5">
-            <button
-              onClick={onSettingsClick}
-              className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/10 border border-white/20 hover:bg-white/20 transition-all shadow-lg"
-            >
-              <Settings className="w-4.5 h-4.5 text-white/90" />
-            </button>
-            <div className="relative">
-              <button
-                onClick={() => setShowNotifHistory(!showNotifHistory)}
-                className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all border ${showNotifHistory ? 'bg-white/30 border-white/40' : 'bg-white/10 border-white/20 hover:bg-white/20 shadow-lg'}`}
+          <AnimatePresence>
+            {showNotifHistory && (
+              <motion.div
+                initial={{ opacity: 0, y: 10, x: 10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, x: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 10, x: 10, scale: 0.95 }}
+                className="absolute top-[calc(100%+8px)] right-0 w-[280px] bg-slate-950/90 backdrop-blur-3xl shadow-2xl rounded-2xl z-[100] border border-white/10 overflow-hidden"
               >
-                <Bell className="w-4.5 h-4.5 text-white/90" />
-                {hasUnreadNotifs && (
-                  <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full border border-white" />
-                )}
-              </button>
+                <div className="p-3 bg-white/5 border-b border-white/5 flex justify-between items-center px-4">
+                  <span className="text-[9px] font-black uppercase text-white/40 tracking-widest">الإشعارات</span>
+                  <button onClick={clearHistory} className="text-[8px] font-bold text-rose-400">مسح</button>
+                </div>
+                <div className="max-h-[250px] overflow-y-auto p-2 space-y-1">
+                  {notifHistory.length === 0 ? (
+                    <div className="py-8 text-center text-[9px] font-black uppercase text-white/10 tracking-widest">فارغ</div>
+                  ) : (
+                    notifHistory.map((notif: any) => (
+                      <div key={notif.id} className="p-3 bg-white/5 hover:bg-white/10 rounded-xl transition-all border border-white/5 text-right">
+                        <h4 className="text-[11px] font-black text-white/90 mb-0.5">{notif.title}</h4>
+                        <p className="text-[9px] text-white/40 leading-tight">{notif.body}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
 
-              <AnimatePresence>
-                {showNotifHistory && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    className="absolute top-[calc(100%+10px)] right-0 w-[280px] bg-white dark:bg-slate-900 shadow-2xl rounded-2xl z-[100] border border-white/20 overflow-hidden"
-                  >
-                    <div className="p-3 bg-slate-50 dark:bg-white/5 border-b border-slate-100 dark:border-white/5 flex justify-between items-center text-[10px] font-black uppercase text-slate-400">
-                      <span>الإشعارات</span>
-                    </div>
-                    <div className="max-h-[200px] overflow-y-auto p-1.5 space-y-1">
-                      {notifHistory.length === 0 ? (
-                        <div className="py-6 text-center text-slate-300 text-[10px] font-black uppercase">فارغ</div>
-                      ) : (
-                        notifHistory.map((notif: any) => (
-                          <div key={notif.id} className="p-3 bg-white dark:bg-white/5 rounded-xl text-right">
-                            <h4 className="text-[11px] font-black dark:text-white truncate">{notif.title}</h4>
-                            <p className="text-[9px] text-slate-400 line-clamp-1">{notif.body}</p>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+      <div className="relative z-10 flex flex-col items-center">
+        {/* Unified Smart Calendar Unit (Far Left & Centered Vertically) */}
+        <div className="absolute left-2 top-1/2 -translate-y-1/2">
+          <motion.div
+            whileHover={{ scale: 1.02 }}
+            className="flex flex-col w-[85px] rounded-2xl backdrop-blur-3xl border border-white/20 shadow-2xl overflow-hidden ring-1 ring-white/10 bg-white/10"
+          >
+            {/* Month Header */}
+            <div className="h-[22px] flex items-center justify-center bg-rose-500/80">
+              <span className="text-[10px] font-black uppercase tracking-widest text-white leading-none">
+                {isRamadan ? 'رمضان' : month}
+              </span>
             </div>
-          </div>
+
+            {/* Day Number */}
+            <div className="flex flex-col items-center justify-center bg-white/5 py-1.5 relative overflow-hidden">
+              {isRamadan && (
+                <Moon className="absolute -right-2 -bottom-2 w-8 h-8 text-white/5 -rotate-12" />
+              )}
+              <span className="text-2xl font-black tracking-tighter leading-tight text-white">
+                {isRamadan ? ramadanDay : day}
+              </span>
+              {isRamadan && (
+                <span className="text-[7px] font-bold text-white/30 uppercase tracking-tighter -mt-1">يوم مبارك</span>
+              )}
+            </div>
+
+            {/* Day Name & Period Footer */}
+            <div className="bg-black/20 py-1 flex flex-col items-center border-t border-white/10">
+              <span className="text-[8px] font-black uppercase text-white/60 leading-none mb-0.5">
+                {isRamadan ? `${dayName} ${day} ${month}` : dayName}
+              </span>
+              <div className="flex items-center gap-1">
+                {(() => {
+                  const iconProps = { className: "w-2.5 h-2.5" };
+                  switch (timeConfig.icon) {
+                    case 'sunrise': return <Sunrise {...iconProps} className="text-amber-300" />;
+                    case 'sun': return <Sun {...iconProps} className="text-amber-400" />;
+                    case 'cloud-sun': return <CloudSun {...iconProps} className="text-sky-200" />;
+                    case 'sunset': return <Sunset {...iconProps} className="text-orange-400" />;
+                    case 'moon': return <Moon {...iconProps} className="text-indigo-200" />;
+                    default: return <Sun {...iconProps} />;
+                  }
+                })()}
+                <span className="text-[7px] font-bold text-white/30 capitalize">{timeConfig.name}</span>
+              </div>
+            </div>
+          </motion.div>
         </div>
 
-        {/* Dynamic Badges Row - More compact */}
-        <div className="flex items-center gap-2 flex-wrap">
+        {/* Center: Greeting (Smaller & Balanced) */}
+        <div className="flex flex-col items-center gap-1 py-4">
+          <motion.h1
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="text-2xl sm:text-3xl font-black tracking-tight flex items-center justify-center gap-4 leading-none text-center"
+          >
+            <span className="drop-shadow-sm">{displayedText}</span>
+            {isRamadan && isTypingComplete && (
+              <motion.div
+                animate={{ rotate: [0, 5, -5, 0] }}
+                transition={{ duration: 5, repeat: Infinity }}
+              >
+                <Moon className="w-6 h-6 text-amber-400 fill-current drop-shadow-[0_0_10px_rgba(251,191,36,0.4)]" />
+              </motion.div>
+            )}
+          </motion.h1>
+        </div>
+
+        {/* Bottom Row: Ultra-Compact Badges */}
+        <div className="flex items-center justify-center gap-3 mt-1 scale-90 sm:scale-100">
           {isRamadan && ramadanCountdown && (
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/10 border border-white/20 text-[10px] font-black shadow-md">
-              {ramadanTarget === 'الإفطار' ? <Sunset className="w-3.5 h-3.5 text-orange-300" /> : <Sunrise className="w-3.5 h-3.5 text-amber-300" />}
-              <span className="text-white/60">{ramadanTarget}:</span>
-              <span className="font-mono tabular-nums">{ramadanCountdown}</span>
+            <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-3xl border border-white/10 text-[10px] font-black shadow-lg">
+              {ramadanTarget === 'الإفطار' ? <Sunset className="w-3.5 h-3.5 text-orange-400" /> : <Sunrise className="w-3.5 h-3.5 text-amber-300" />}
+              <span className="text-white/50">{ramadanTarget}:</span>
+              <span className="font-mono text-white tracking-tight">{ramadanCountdown}</span>
             </div>
           )}
 
           {currentTask && (
             <button
               onClick={handleCurrentTaskClick}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-indigo-500/20 border border-indigo-400/30 text-[10px] font-black shadow-md hover:bg-indigo-500/30 transition-all group"
+              className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-500/15 backdrop-blur-3xl border border-indigo-400/20 text-[10px] font-black shadow-lg hover:bg-indigo-500/25 transition-all group"
             >
               <Star className="w-3.5 h-3.5 text-amber-300 fill-current" />
-              <span>{currentTask}</span>
-              <ChevronLeft className="w-3 h-3 text-white/40 group-hover:translate-x-[-2px] transition-transform" />
+              <span className="max-w-[120px] truncate">المهمة: {currentTask}</span>
+              <ChevronLeft className="w-3 h-3 text-white/30 group-hover:translate-x-[-2px] transition-transform" />
             </button>
-          )}
-
-          {userId && (
-            <div className="ml-auto">
-              <MoodSelector userId={userId} partnerName={partnerName} />
-            </div>
-          )}
-        </div>
-
-        {/* Improved Cards Layout - Compact & Flat */}
-        <div className="grid grid-cols-3 gap-3">
-          {/* Qibla Card */}
-          <button
-            onClick={onQiblaClick}
-            className="bg-white/10 backdrop-blur-xl rounded-[1.75rem] border border-white/20 flex flex-col items-center justify-center h-20 relative overflow-hidden group hover:bg-white/20 transition-all active:scale-95"
-          >
-            <div className="scale-110 group-hover:scale-125 transition-transform duration-700">
-              <QiblaCompass minimal />
-            </div>
-            <span className="text-[8px] font-black uppercase tracking-widest text-white/30 absolute bottom-2">القبلة</span>
-          </button>
-
-          {/* Progress Card */}
-          <div className="bg-white/10 backdrop-blur-xl rounded-[1.75rem] border border-white/20 flex items-center justify-center gap-3 h-20 px-3 shadow-md relative group">
-            <div className="relative w-11 h-11 shrink-0">
-              <svg className="w-full h-full -rotate-90">
-                <circle cx="22" cy="22" r="19" className="stroke-white/10 fill-none" strokeWidth="4" />
-                <motion.circle
-                  initial={{ strokeDashoffset: 120 }}
-                  animate={{ strokeDashoffset: 120 * (1 - stats.todayProgress / 100) }}
-                  transition={{ duration: 1.5, ease: "circOut" }}
-                  cx="22" cy="22" r="19"
-                  className="stroke-amber-400 fill-none"
-                  strokeWidth="4"
-                  strokeDasharray="120"
-                  strokeLinecap="round"
-                />
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center text-[10px] font-black">{stats.todayProgress}%</div>
-            </div>
-            <div className="hidden sm:block">
-              <span className="text-[8px] font-black text-white/40 uppercase block leading-none">الإنجاز</span>
-              <span className="text-[11px] font-black block mt-1 tabular-nums">{stats.totalCompleted}/{stats.totalTasks}</span>
-            </div>
-          </div>
-
-          {/* Partner Card */}
-          {hasPartner ? (
-            <button
-              onClick={onPartnerStatsClick}
-              className="bg-emerald-500/10 backdrop-blur-xl rounded-[1.75rem] border border-emerald-500/30 flex items-center justify-center gap-3 h-20 px-3 hover:bg-emerald-500/20 transition-all group shadow-md"
-            >
-              <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform relative">
-                <Heart className={`w-6 h-6 ${partnerMood ? 'text-pink-400 fill-current' : 'text-white/20'}`} />
-                {partnerMood && <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white/20 shadow-lg" />}
-              </div>
-              <div className="hidden sm:block text-right">
-                <span className="text-[8px] font-black text-white/40 uppercase block leading-none">الشريك</span>
-                <span className={`text-[11px] font-black block mt-1 ${partnerMood ? 'text-emerald-300' : 'text-white/20'}`}>
-                  {partnerMood ? 'متصل' : 'غير متصل'}
-                </span>
-              </div>
-            </button>
-          ) : (
-            <div className="bg-white/5 backdrop-blur-xl rounded-[1.75rem] border border-white/10 flex items-center justify-center h-20 opacity-30">
-              <User className="w-7 h-7" />
-            </div>
           )}
         </div>
       </div>

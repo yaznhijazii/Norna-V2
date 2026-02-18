@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from "react";
-import { Sunrise, Sun, Sunset, Moon, Book, BookOpen, Clock, Calendar, Check, ChevronLeft, AlertCircle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Sunrise, Sun, Sunset, Moon, Book, BookOpen, Calendar, Check, ChevronLeft, ChevronDown, ChevronUp, Sparkles } from "lucide-react";
 import { usePrayerTimes } from "../hooks/usePrayerTimes";
 import { motion, AnimatePresence } from "motion/react";
 import confetti from 'canvas-confetti';
@@ -32,13 +32,13 @@ export function InteractiveTimeline({ userId }: InteractiveTimelineProps) {
   const [tasks, setTasks] = useState<TimelineTask[]>([]);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [completionStatus, setCompletionStatus] = useState<Record<string, boolean>>({});
-  const [nextPrayerCountdown, setNextPrayerCountdown] = useState<string>('');
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const hasScrolledRef = useRef(false);
-  const clickTimerRef = useRef<{ [key: string]: { count: number; timer: NodeJS.Timeout | null } }>({});
+  const [isExpanded, setIsExpanded] = useState(false);
   const prayerTimes = usePrayerTimes();
 
   const currentMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
+  const completedCount = Object.values(completionStatus).filter(Boolean).length;
+  const totalCount = tasks.length;
+  const progressPercent = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
 
   const getCurrentUserId = () => {
     if (userId) return userId;
@@ -57,71 +57,33 @@ export function InteractiveTimeline({ userId }: InteractiveTimelineProps) {
   }, []);
 
   useEffect(() => {
-    const prayers = tasks.filter(t => t.type === 'prayer' && !completionStatus[t.id]);
-    const nextPrayer = prayers.find(p => p.timeValue > currentMinutes);
-    if (nextPrayer) {
-      const diff = nextPrayer.timeValue - currentMinutes;
-      const hours = Math.floor(diff / 60);
-      const mins = diff % 60;
-      setNextPrayerCountdown(`${nextPrayer.title} بعد ${hours > 0 ? hours + 'س ' : ''}${mins}د`);
-    } else {
-      setNextPrayerCountdown('');
-    }
-  }, [tasks, currentMinutes, completionStatus]);
-
-  // Handle automatic scrolling to active task when user scrolls
-  useEffect(() => {
-    const container = scrollContainerRef.current;
-    if (!container || tasks.length === 0) return;
-
-    const handleScroll = () => {
-      if (!hasScrolledRef.current) {
-        hasScrolledRef.current = true;
-        const timer = setTimeout(() => {
-          const activeItem = container.querySelector('.item-is-active');
-          if (activeItem) {
-            activeItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          }
-        }, 300);
-        return () => clearTimeout(timer);
-      }
-    };
-
-    container.addEventListener('scroll', handleScroll, { once: true });
-    return () => container.removeEventListener('scroll', handleScroll);
-  }, [tasks]);
-
-  useEffect(() => {
     if (prayerTimes && currentUserId) loadTasks(currentUserId);
   }, [prayerTimes, currentTime, currentUserId]);
 
   const loadTasks = async (userId: string) => {
     if (!prayerTimes) return;
-
     const isFriday = new Date().getDay() === 5;
 
     const allTasks: TimelineTask[] = [
       { id: "fajr", title: "صلاة الفجر", time: prayerTimes.Fajr, timeValue: convertToMinutes(prayerTimes.Fajr), icon: Sunrise, isActive: false, isPast: false, type: "prayer", storageField: "fajr" },
       { id: "athkar-morning", title: "أذكار الصباح", time: "بعد الفجر", timeValue: convertToMinutes(prayerTimes.Fajr) + 30, icon: Book, isActive: false, isPast: false, type: "athkar" },
-      { id: "baqarah", title: "سورة البقرة", time: `صفحة ${Math.floor((new Date().getTime() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000) % 604 + 1}`, timeValue: convertToMinutes(prayerTimes.Fajr) + 60, icon: BookOpen, isActive: false, isPast: false, type: "quran", storageField: "baqarah" },
-      ...(isFriday ? [{ id: "kahf", title: "سورة الكهف", time: "يوم الجمعة", timeValue: convertToMinutes(prayerTimes.Dhuhr) - 60, icon: BookOpen, isActive: false, isPast: false, type: "quran" as const, storageField: "kahf" }] : []),
+      { id: "baqarah", title: "سورة البقرة", time: `ص ${Math.floor((new Date().getTime() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000) % 604 + 1}`, timeValue: convertToMinutes(prayerTimes.Fajr) + 60, icon: BookOpen, isActive: false, isPast: false, type: "quran", storageField: "baqarah" },
+      ...(isFriday ? [{ id: "kahf", title: "سورة الكهف", time: "الجمعة", timeValue: convertToMinutes(prayerTimes.Dhuhr) - 60, icon: BookOpen, isActive: false, isPast: false, type: "quran" as const, storageField: "kahf" }] : []),
       { id: "dhuhr", title: "صلاة الظهر", time: prayerTimes.Dhuhr, timeValue: convertToMinutes(prayerTimes.Dhuhr), icon: Sun, isActive: false, isPast: false, type: "prayer" as const, storageField: "dhuhr" },
       { id: "asr", title: "صلاة العصر", time: prayerTimes.Asr, timeValue: convertToMinutes(prayerTimes.Asr), icon: Sun, isActive: false, isPast: false, type: "prayer" as const, storageField: "asr" },
       { id: "maghrib", title: "صلاة المغرب", time: prayerTimes.Maghrib, timeValue: convertToMinutes(prayerTimes.Maghrib), icon: Sunset, isActive: false, isPast: false, type: "prayer" as const, storageField: "maghrib" },
-      { id: "athkar-evening", title: "أذكار المساء", time: "بعد المغرب", timeValue: convertToMinutes(prayerTimes.Maghrib) + 30, icon: Book, isActive: false, isPast: false, type: "athkar" as const },
+      { id: "athkar-evening", title: "أذكار المساء", time: "المغرب", timeValue: convertToMinutes(prayerTimes.Maghrib) + 30, icon: Book, isActive: false, isPast: false, type: "athkar" as const },
       { id: "isha", title: "صلاة العشاء", time: prayerTimes.Isha, timeValue: convertToMinutes(prayerTimes.Isha), icon: Moon, isActive: false, isPast: false, type: "prayer" as const, storageField: "isha" },
-      { id: "mulk", title: "سورة الملك", time: "قبل النوم", timeValue: 23 * 60 + 58, icon: BookOpen, isActive: false, isPast: false, type: "quran" as const, storageField: "mulk" }
+      { id: "mulk", title: "سورة الملك", time: "النوم", timeValue: 23 * 60 + 58, icon: BookOpen, isActive: false, isPast: false, type: "quran" as const, storageField: "mulk" }
     ];
 
     allTasks.sort((a, b) => a.timeValue - b.timeValue);
-    let currentActiveIndex = -1;
-    for (let i = 0; i < allTasks.length; i++) {
-      if (currentMinutes >= allTasks[i].timeValue) currentActiveIndex = i;
-    }
+    let activeIdx = allTasks.findIndex(t => t.timeValue > currentMinutes) - 1;
+    if (activeIdx < 0) activeIdx = allTasks.length - 1;
 
     allTasks.forEach((task, index) => {
-      if (index === currentActiveIndex) { task.isActive = true; task.isPast = false; }
-      else if (index < currentActiveIndex) { task.isActive = false; task.isPast = true; }
+      task.isActive = index === activeIdx;
+      task.isPast = index < activeIdx;
     });
 
     setTasks(allTasks);
@@ -142,184 +104,168 @@ export function InteractiveTimeline({ userId }: InteractiveTimelineProps) {
     setCompletionStatus(status);
   };
 
-  const handleTaskClick = async (taskId: string, e: React.MouseEvent) => {
+  const handleToggleTask = async (taskId: string) => {
     const task = tasks.find((t) => t.id === taskId);
     if (!task || !currentUserId) return;
 
-    if (!clickTimerRef.current[taskId]) clickTimerRef.current[taskId] = { count: 0, timer: null };
-    const clickData = clickTimerRef.current[taskId];
-    clickData.count++;
-    if (clickData.timer) clearTimeout(clickData.timer);
+    const newStatus = !completionStatus[taskId];
 
-    if (clickData.count === 1) {
-      clickData.timer = setTimeout(async () => {
-        if (task.type === 'prayer') {
-          const newStatus = !completionStatus[taskId];
-          await updatePrayer(currentUserId, task.storageField!, newStatus);
-          setCompletionStatus({ ...completionStatus, [taskId]: newStatus });
-          window.dispatchEvent(new Event("storage"));
-          if (newStatus) confetti({ particleCount: 30, spread: 30, origin: { y: 0.7 } });
-        } else if (task.type === 'quran' || task.type === 'athkar') {
-          if (!completionStatus[taskId]) {
-            if (task.type === 'quran' && task.storageField) {
-              window.dispatchEvent(new CustomEvent('openQuranSurah', { detail: { surah: task.storageField, openTodayPage: task.storageField === 'baqarah' } }));
-            } else if (task.type === 'athkar') {
-              window.dispatchEvent(new CustomEvent('openAthkar', { detail: { type: task.id === 'athkar-morning' ? 'morning' : 'evening' } }));
-            }
-          } else {
-            if (task.type === 'athkar') await updateAthkarProgress(currentUserId, task.id === 'athkar-morning' ? 'morning' : 'evening', false);
-            else await updateQuranProgress(currentUserId, task.storageField as any, 0, 0, false);
-            setCompletionStatus({ ...completionStatus, [taskId]: false });
-            window.dispatchEvent(new Event("storage"));
-          }
-        }
-        clickData.count = 0;
-      }, 300);
-    } else if (clickData.count === 2) {
-      clearTimeout(clickData.timer!);
-      clickData.count = 0;
-      if (!completionStatus[taskId]) {
-        if (task.type === 'athkar') await updateAthkarProgress(currentUserId, task.id === 'athkar-morning' ? 'morning' : 'evening', true);
-        else if (task.type === 'quran' && task.storageField) await updateQuranProgress(currentUserId, task.storageField as any, 100, 0, true);
-        setCompletionStatus({ ...completionStatus, [taskId]: true });
-        window.dispatchEvent(new Event("storage"));
-        confetti({ particleCount: 60, spread: 50 });
+    if (task.type === 'prayer') {
+      await updatePrayer(currentUserId, task.storageField!, newStatus);
+    } else if (task.type === 'quran' && task.storageField) {
+      const targetPage = task.storageField === 'baqarah' ? (new Date().getDay() === 6 ? 1 : new Date().getDay() + 2) : 1;
+      await updateQuranProgress(currentUserId, task.storageField, targetPage, 0, newStatus);
+    } else if (task.type === 'athkar') {
+      await updateAthkarProgress(currentUserId, task.id === 'athkar-morning' ? 'morning' : 'evening', newStatus);
+    }
+
+    setCompletionStatus(prev => ({ ...prev, [taskId]: newStatus }));
+    window.dispatchEvent(new Event("storage"));
+    if (newStatus) confetti({ particleCount: 20, spread: 30, origin: { y: 0.8 } });
+  };
+
+  const handleTaskClick = async (taskId: string) => {
+    const task = tasks.find((t) => t.id === taskId);
+    if (!task || !currentUserId) return;
+
+    if (task.type === 'prayer') {
+      handleToggleTask(taskId);
+    } else {
+      if (task.type === 'quran' && task.storageField) {
+        window.dispatchEvent(new CustomEvent('openQuranSurah', { detail: { surah: task.storageField, openTodayPage: task.storageField === 'baqarah' } }));
+      } else if (task.type === 'athkar') {
+        window.dispatchEvent(new CustomEvent('openAthkar', { detail: { type: task.id === 'athkar-morning' ? 'morning' : 'evening' } }));
       }
     }
   };
 
+  const activeIndex = tasks.findIndex(t => t.isActive);
+  const visibleTasks = isExpanded
+    ? tasks
+    : tasks.filter((_, idx) => idx >= activeIndex - 1 && idx <= activeIndex + 1);
+
   return (
-    <div className="premium-card p-5 sm:p-6 backdrop-blur-3xl sticky top-4 border-white/50 dark:border-white/10 dark:bg-slate-900/40 shadow-xl overflow-hidden">
-      <div className="flex items-center justify-between mb-8 relative z-10">
-        <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-2xl bg-emerald-500 shadow-lg shadow-emerald-500/10 flex items-center justify-center">
-            <Calendar className="w-6 h-6 text-white" />
+    <div className="relative space-y-4" dir="rtl">
+      {/* Improved Header Section - Not a Card anymore */}
+      <div className="flex flex-col gap-5 px-1">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-1.5 h-6 bg-emerald-500 rounded-full" />
+            <div className="flex flex-col">
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-black text-slate-800 dark:text-white leading-none">الخطة اليومية</h2>
+                {progressPercent === 100 && <Sparkles className="w-4 h-4 text-amber-500" />}
+              </div>
+              <span className="text-[10px] font-bold text-emerald-500 dark:text-emerald-400/80 uppercase tracking-widest mt-1">
+                تم إنجاز {progressPercent.toFixed(0)}% من مهام اليوم
+              </span>
+            </div>
           </div>
-          <div>
-            <h2 className="text-lg font-black text-slate-800 dark:text-white leading-tight">الخطة اليومية</h2>
-            <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-0.5">خطة يومك المبارك</p>
-          </div>
-        </div>
-        {nextPrayerCountdown && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-white/50 dark:bg-slate-900/40 backdrop-blur-md border border-slate-200/60 dark:border-white/5 shadow-sm transition-all hover:shadow-md group"
+
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full text-[10px] font-black text-slate-500 hover:bg-emerald-500 hover:text-white transition-all shadow-sm"
           >
-            <div className="w-5 h-5 rounded-lg bg-orange-50 dark:bg-orange-500/10 flex items-center justify-center transition-colors group-hover:bg-orange-100 dark:group-hover:bg-orange-500/20">
-              <Clock className="w-3 h-3 text-orange-500/80" />
-            </div>
-            <div className="flex flex-col items-start leading-none gap-0.5">
-              <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tighter">الصلاة القادمة</span>
-              <span className="text-[11px] font-black text-orange-500/90 dark:text-orange-400/90">{nextPrayerCountdown}</span>
-            </div>
-          </motion.div>
-        )}
+            <span>{isExpanded ? 'طيّ' : 'عرض الكل'}</span>
+            {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+          </button>
+        </div>
+
+        {/* Dynamic Progress Indicator */}
+        <div className="flex items-center gap-3">
+          <div className="flex-1 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${progressPercent}%` }}
+              className="h-full bg-emerald-500"
+            />
+          </div>
+          <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 tabular-nums">%{progressPercent.toFixed(0)}</span>
+        </div>
       </div>
 
-      <div
-        className="relative custom-scrollbar max-h-[520px] overflow-y-auto overflow-x-hidden px-1 py-2"
-        ref={scrollContainerRef}
-      >
-        <div className="space-y-3 relative pr-10 pl-1">
-          {/* Vertical line specifically placed - Aligned with dots */}
-          <div className="absolute right-[20px] top-0 bottom-0 w-px border-r border-dotted border-slate-300 dark:border-white/20" />
+      {/* Task List Section */}
+      <div className="space-y-3">
+        <AnimatePresence mode="popLayout">
+          {visibleTasks.map((task, index) => {
+            const Icon = task.icon;
+            const isCompleted = completionStatus[task.id];
 
-          <AnimatePresence>
-            {tasks.map((task, index) => {
-              const Icon = task.icon;
-              const isCompleted = completionStatus[task.id];
-              const nextTask = index < tasks.length - 1 ? tasks[index + 1] : null;
-              const isMissed = task.isPast && !isCompleted && nextTask && currentMinutes >= (nextTask.timeValue - 2);
-              const isActive = task.isActive;
-
-              return (
-                <div key={task.id} className={`relative ${isActive ? 'item-is-active' : ''}`}>
-                  {/* Timeline Dot - Perfectly centered on the line */}
-                  <div className="absolute right-[-32px] top-1/2 -translate-y-1/2 z-20 flex items-center justify-center w-6 h-6">
-                    <motion.div
-                      animate={task.isActive ? { scale: [1, 1.3, 1] } : {}}
-                      transition={task.isActive ? { repeat: Infinity, duration: 2 } : {}}
-                      className={`w-3 h-3 rounded-full border-2 border-white dark:border-slate-900 shadow-md shrink-0 aspect-square
-                          ${isCompleted ? 'bg-emerald-500' :
-                          task.isActive ? 'bg-amber-500' :
-                            isMissed ? 'bg-rose-500' : 'bg-slate-200 dark:bg-slate-700'}
-                        `}
-                    />
+            return (
+              <motion.div
+                key={task.id}
+                layout
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="relative"
+              >
+                <button
+                  onClick={() => handleTaskClick(task.id)}
+                  onDoubleClick={() => handleToggleTask(task.id)}
+                  className={`
+                    w-full flex items-center gap-3 p-4 rounded-[1.75rem] border transition-all duration-500 text-right
+                    ${task.isActive
+                      ? 'bg-emerald-500 text-white border-emerald-400 shadow-[0_10px_25px_-5px_rgba(16,185,129,0.3)] scale-[1.02] z-10'
+                      : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-white/5 shadow-sm'
+                    }
+                    ${isCompleted && !task.isActive ? 'grayscale opacity-60' : ''}
+                  `}
+                >
+                  {/* Task Icon */}
+                  <div className={`
+                    w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 shadow-sm
+                    ${task.isActive
+                      ? 'bg-white/20 backdrop-blur-md text-white'
+                      : isCompleted ? 'bg-emerald-500 text-white' : 'bg-slate-50 dark:bg-slate-800 text-slate-400'
+                    }
+                  `}>
+                    {isCompleted ? <Check className="w-6 h-6 stroke-[3]" /> : <Icon className="w-5 h-5" />}
                   </div>
 
-                  <motion.button
-                    onClick={(e) => handleTaskClick(task.id, e)}
-                    whileHover={{ x: -4 }}
-                    whileTap={{ scale: 0.98 }}
-                    className={`
-                      w-full flex items-center gap-4 p-3.5 rounded-2xl transition-all duration-300 border text-right relative overflow-hidden
-                      ${task.isActive
-                        ? 'bg-white dark:bg-slate-800/60 border-amber-300 dark:border-amber-500/40 shadow-xl shadow-amber-500/5'
-                        : isCompleted
-                          ? 'bg-slate-50/50 dark:bg-emerald-500/5 border-emerald-100 dark:border-emerald-500/10'
-                          : isMissed
-                            ? 'bg-rose-50/50 dark:bg-rose-500/5 border-rose-100 dark:border-rose-500/10'
-                            : 'bg-white dark:bg-white/5 border-slate-100 dark:border-white/10 hover:border-emerald-400/30'
-                      }
-                      ${task.isActive ? 'ring-1 ring-amber-500/10' : ''}
-                    `}
-                  >
-                    {/* Icon Section */}
-                    <div className={`
-                      w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-500 shrink-0
-                      ${isCompleted
-                        ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
-                        : task.isActive
-                          ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20'
-                          : isMissed
-                            ? 'bg-rose-100 dark:bg-rose-500/20 text-rose-500'
-                            : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
-                      }
-                    `}>
-                      {isCompleted ? <Check className="w-5.5 h-5.5 stroke-[3]" /> : <Icon className={`w-5 h-5 ${task.isActive ? 'animate-pulse' : ''}`} />}
-                    </div>
-
-                    {/* Content Section */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-1">
-                        <h3 className={`font-black text-[14px] transition-colors leading-none ${isCompleted ? 'text-slate-400 dark:text-slate-500' :
-                          task.isActive ? 'text-amber-900 dark:text-amber-100' :
-                            isMissed ? 'text-rose-900 dark:text-rose-300' : 'text-slate-700 dark:text-slate-200'
-                          }`}>
+                  {/* Task Text Content */}
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <div className="flex flex-col items-start leading-none">
+                        <span className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${task.isActive ? 'text-white/70' : 'text-slate-400'}`}>
+                          {task.isActive ? 'الآن وبقوة' : task.isPast ? 'مضى' : 'قادماً'}
+                        </span>
+                        <h3 className={`font-black text-[15px] ${task.isActive ? 'text-white' : 'text-slate-800 dark:text-slate-200'}`}>
                           {task.title}
                         </h3>
-                        {task.isActive && !isCompleted && (
-                          <span className="text-[8px] font-black bg-amber-500 text-white px-2 py-0.5 rounded-full uppercase tracking-tighter shadow-md animate-pulse">الآن</span>
-                        )}
                       </div>
 
-                      <div className="flex items-center gap-2">
-                        <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500">
+                      <div className="flex flex-col items-end">
+                        <span className={`text-[11px] font-black tabular-nums ${task.isActive ? 'text-white/80' : 'text-slate-400'}`}>
                           {task.time}
                         </span>
                         {task.type === 'quran' && !isCompleted && (
-                          <span className="text-[9px] font-black text-indigo-600 bg-indigo-50 dark:bg-indigo-500/10 px-2 py-0.5 rounded-lg border border-indigo-500/10">ورد</span>
-                        )}
-                        {isMissed && (
-                          <span className="text-[9px] font-black text-rose-500 flex items-center gap-1">
-                            <AlertCircle className="w-3 h-3" /> فائتة
+                          <span className={`text-[8px] font-black mt-1 px-1.5 py-0.5 rounded-md ${task.isActive ? 'bg-white/20 text-white' : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600'}`}>
+                            وِرد يومي
                           </span>
                         )}
                       </div>
                     </div>
+                  </div>
 
-                    {/* Action Arrow */}
-                    {(task.type === 'quran' || task.type === 'athkar') && !isCompleted && (
-                      <ChevronLeft className="w-4.5 h-4.5 text-slate-300" />
-                    )}
-                  </motion.button>
-                </div>
-              );
-            })}
-          </AnimatePresence>
-        </div>
+                  {/* Action Link for Quran/Athkar */}
+                  {(task.type === 'quran' || task.type === 'athkar') && !isCompleted && (
+                    <ChevronLeft className={`w-5 h-5 ${task.isActive ? 'text-white' : 'text-slate-300'}`} />
+                  )}
+                </button>
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
       </div>
+
+      {!isExpanded && tasks.length > visibleTasks.length && (
+        <div className="flex items-center justify-center gap-2 pt-1 opacity-40">
+          <div className="w-1 h-1 rounded-full bg-slate-400" />
+          <div className="w-1 h-1 rounded-full bg-slate-400" />
+          <div className="w-1 h-1 rounded-full bg-slate-400" />
+        </div>
+      )}
     </div>
   );
 }

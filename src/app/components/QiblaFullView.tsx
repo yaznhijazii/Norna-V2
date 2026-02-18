@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronLeft, MapPin, X, Navigation, Compass, Camera } from 'lucide-react';
+import { ChevronLeft, MapPin, X, Navigation, Compass } from 'lucide-react';
 import { useQiblaDirection } from '../hooks/useQiblaDirection';
 
 interface QiblaFullViewProps {
@@ -161,11 +161,7 @@ export function QiblaFullView({ isOpen, onClose }: QiblaFullViewProps) {
                 </div>
 
                 {/* Bottom Actions */}
-                <div className="px-6 pb-12 flex justify-between items-center">
-                    <button className="w-12 h-12 rounded-2xl bg-white dark:bg-slate-900 shadow-sm border border-slate-100 dark:border-white/5 flex items-center justify-center text-slate-400">
-                        <Camera className="w-6 h-6" />
-                    </button>
-
+                <div className="px-6 pb-12 flex justify-center items-center">
                     {needsPermission && (
                         <button
                             onClick={requestPermission}
@@ -175,8 +171,6 @@ export function QiblaFullView({ isOpen, onClose }: QiblaFullViewProps) {
                             <span>تفعيل البوصلة</span>
                         </button>
                     )}
-
-                    <div className="w-12 h-12" /> {/* Spacer */}
                 </div>
 
                 {loading && (
