@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { LogIn, UserPlus, Heart, Sparkles, ChevronLeft } from "lucide-react";
+import { LogIn, UserPlus, ShieldCheck, ArrowRight, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { supabase } from "../utils/supabase";
 
@@ -95,130 +95,155 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
   };
 
   return (
-    <div className="min-h-screen relative flex items-center justify-center p-6 overflow-hidden bg-[#F8FAFC]" dir="rtl">
-      {/* Soft Premium Mesh Background */}
+    <div className="min-h-screen relative flex items-center justify-center p-6 overflow-hidden bg-slate-950" dir="rtl">
+      {/* Premium Dynamic Background */}
       <div className="absolute inset-0 z-0">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,_rgba(16,185,129,0.05)_0%,_transparent_50%)]" />
         <motion.div
           animate={{
-            scale: [1, 1.2, 1],
-            opacity: [0.3, 0.5, 0.3],
+            x: [0, 50, 0],
+            y: [0, 30, 0],
+            opacity: [0.1, 0.2, 0.1],
           }}
-          transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
-          className="absolute top-[-10%] right-[-5%] w-[60%] h-[60%] bg-emerald-100 rounded-full blur-[100px]"
+          transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute top-[-10%] right-[-5%] w-[70%] h-[70%] bg-emerald-500 rounded-full blur-[120px]"
         />
         <motion.div
           animate={{
-            scale: [1.2, 1, 1.2],
-            opacity: [0.2, 0.4, 0.2],
+            x: [0, -40, 0],
+            y: [0, -20, 0],
+            opacity: [0.1, 0.15, 0.1],
           }}
-          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-          className="absolute bottom-[-10%] left-[-5%] w-[60%] h-[60%] bg-indigo-100 rounded-full blur-[100px]"
+          transition={{ duration: 25, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute bottom-[-10%] left-[-5%] w-[60%] h-[60%] bg-indigo-600 rounded-full blur-[120px]"
         />
+        {/* Subtle Islamic Pattern Overlay */}
+        <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/islamic-art.png')] bg-repeat" />
       </div>
 
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md relative z-10"
+        transition={{ type: "spring", damping: 25, stiffness: 200 }}
+        className="w-full max-w-lg relative z-10"
       >
+        {/* Brand Identity */}
         <div className="text-center mb-10">
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="inline-block relative mb-6"
+            className="inline-block relative mb-8"
           >
-            <div className="absolute inset-0 bg-white/40 blur-3xl rounded-full" />
-            <img
-              src={logoImage}
-              alt="نورنا"
-              className="w-20 h-20 rounded-[1.8rem] shadow-2xl relative z-10 border border-white"
-            />
+            <div className="absolute inset-0 bg-emerald-500/20 blur-3xl rounded-full" />
+            <div className="relative p-1 bg-gradient-to-tr from-emerald-400 to-teal-500 rounded-[2.2rem] shadow-2xl">
+              <motion.img
+                animate={{
+                  y: [0, -8, 0],
+                }}
+                transition={{
+                  duration: 4,
+                  repeat: Infinity,
+                  ease: "easeInOut"
+                }}
+                src={logoImage}
+                alt="نورنا"
+                className="w-24 h-24 rounded-[2rem] shadow-inner border border-white/20"
+              />
+            </div>
           </motion.div>
 
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
+            transition={{ delay: 0.2 }}
+            className="space-y-2"
           >
-            <h1 className="text-4xl font-black text-[#0F172A] tracking-tighter mb-1">
-              نورنا
+            <h1 className="text-5xl font-black text-white tracking-tight font-amiri">
+              نورنــــا
             </h1>
-            <p className="text-[#64748B] font-bold text-[10px] uppercase tracking-[0.4em]">حب يضيء بالإيمان</p>
+            <p className="text-emerald-400/80 font-bold text-xs uppercase tracking-[0.4em]">يُضيء بالإيمان والمودة</p>
           </motion.div>
         </div>
 
-        <div className="bg-white rounded-[3rem] p-10 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.1)] border border-white relative overflow-hidden">
-          {/* Internal Glow */}
-          <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-50/50 blur-3xl rounded-full" />
+        {/* Auth Card - Advanced Glassmorphism */}
+        <div className="bg-white/[0.03] backdrop-blur-2xl rounded-[3.5rem] p-10 border border-white/10 shadow-2xl shadow-black/50 relative overflow-hidden">
+          {/* Decorative Internal Glow */}
+          <div className="absolute -top-24 -right-24 w-64 h-64 bg-emerald-500/10 blur-[80px] rounded-full" />
+          <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-indigo-500/10 blur-[80px] rounded-full" />
 
-          {/* Mode Switcher - Pill Style */}
-          <div className="flex bg-[#F1F5F9] p-1.5 rounded-[1.5rem] mb-10 relative">
-            <div
-              className={`absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] bg-white rounded-[1.2rem] shadow-sm transition-transform duration-500 ease-out
-                ${mode === "signup" ? "translate-x-[-100%]" : "translate-x-0"}`}
+          {/* Mode Switcher */}
+          <div className="flex bg-white/[0.05] p-2 rounded-[2rem] mb-12 relative border border-white/5">
+            <motion.div
+              layoutId="pill"
+              className={`absolute top-2 bottom-2 w-[calc(50%-8px)] bg-emerald-500 rounded-[1.6rem] shadow-lg shadow-emerald-500/20 right-2
+                ${mode === "login" ? "translate-x-0" : "-translate-x-full"}`}
+              transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
             />
             <button
               onClick={() => setMode("login")}
               type="button"
-              className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl font-black text-xs transition-all duration-300 relative z-10
-                ${mode === "login" ? "text-[#0F172A]" : "text-slate-400"}`}
+              className={`flex-1 flex items-center justify-center gap-3 py-4 rounded-2xl font-black text-sm transition-colors relative z-10
+                ${mode === "login" ? "text-white" : "text-white/40"}`}
             >
-              <LogIn className={`w-3.5 h-3.5 transition-colors ${mode === "login" ? "text-indigo-500" : "text-slate-300"}`} />
-              تسجيل الدخول
+              <LogIn className="w-4 h-4" />
+              <span>تسجيل الدخول</span>
             </button>
             <button
               onClick={() => setMode("signup")}
               type="button"
-              className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl font-black text-xs transition-all duration-300 relative z-10
-                ${mode === "signup" ? "text-[#0F172A]" : "text-slate-400"}`}
+              className={`flex-1 flex items-center justify-center gap-3 py-4 rounded-2xl font-black text-sm transition-colors relative z-10
+                ${mode === "signup" ? "text-white" : "text-white/40"}`}
             >
-              <UserPlus className={`w-3.5 h-3.5 transition-colors ${mode === "signup" ? "text-emerald-500" : "text-slate-300"}`} />
-              إنشاء حساب
+              <UserPlus className="w-4 h-4" />
+              <span>إنشاء حساب</span>
             </button>
           </div>
 
-          <form onSubmit={mode === "login" ? handleLogin : handleSignup} className="space-y-8">
+          <form onSubmit={mode === "login" ? handleLogin : handleSignup} className="space-y-10">
             <AnimatePresence mode="wait">
               <motion.div
                 key={mode}
-                initial={{ opacity: 0, x: 10 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -10 }}
-                className="space-y-6"
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                transition={{ duration: 0.3 }}
+                className="space-y-8"
               >
                 {mode === "signup" && (
-                  <div className="space-y-3">
-                    <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest pr-2">الاسم الحقيقي</label>
-                    <input
-                      type="text"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      className="w-full bg-[#F8FAFC] border border-slate-100 rounded-2xl px-6 py-4 text-[#0F172A] font-bold outline-none focus:ring-2 focus:ring-emerald-100 focus:border-emerald-200 transition-all placeholder:text-slate-300"
-                      placeholder="اسمك الكريم"
-                      required
-                    />
+                  <div className="space-y-3 group">
+                    <label className="block text-[11px] font-black text-emerald-400 uppercase tracking-[0.2em] pr-4">الاسم الكامل</label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        className="w-full bg-white/[0.05] border border-white/10 rounded-2xl px-6 py-5 text-white font-bold outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/50 transition-all placeholder:text-white/20"
+                        placeholder="أدخل اسمك الكريم"
+                        required
+                      />
+                    </div>
                   </div>
                 )}
 
                 <div className="space-y-3">
-                  <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest pr-2">اسم المستخدم الحصري</label>
+                  <label className="block text-[11px] font-black text-emerald-400 uppercase tracking-[0.2em] pr-4">اسم المستخدم</label>
                   <input
                     type="text"
                     value={username}
                     onChange={(e) => setUsername(e.target.value.toLowerCase().trim())}
-                    className="w-full bg-[#F8FAFC] border border-slate-100 rounded-2xl px-6 py-4 text-[#0F172A] font-bold outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-200 transition-all placeholder:text-slate-300"
-                    placeholder="shurooq_99"
+                    className="w-full bg-white/[0.05] border border-white/10 rounded-2xl px-6 py-5 text-white font-bold outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/50 transition-all placeholder:text-white/20"
+                    placeholder="Username"
                     required
                   />
                 </div>
 
                 <div className="space-y-3">
-                  <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest pr-2">كلمة المرور الخاصة بك</label>
+                  <label className="block text-[11px] font-black text-emerald-400 uppercase tracking-[0.2em] pr-4">كلمة المرور</label>
                   <input
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-[#F8FAFC] border border-slate-100 rounded-2xl px-6 py-4 text-[#0F172A] font-bold outline-none focus:ring-2 focus:ring-slate-100 focus:border-slate-200 transition-all placeholder:text-slate-300"
+                    className="w-full bg-white/[0.05] border border-white/10 rounded-2xl px-6 py-5 text-white font-bold outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/50 transition-all placeholder:text-white/20"
                     placeholder="••••••••"
                     required
                   />
@@ -228,10 +253,11 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
 
             {error && (
               <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="bg-rose-50 border border-rose-100 text-rose-500 px-5 py-3 rounded-xl text-[10px] font-black text-center uppercase tracking-widest"
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-rose-500/10 border border-rose-500/20 text-rose-400 px-6 py-4 rounded-2xl text-xs font-bold text-center flex items-center justify-center gap-2"
               >
+                <ShieldCheck className="w-4 h-4" />
                 {error}
               </motion.div>
             )}
@@ -241,37 +267,26 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
               disabled={loading}
               className="w-full relative group"
             >
-              <div className="absolute inset-0 bg-slate-900 rounded-2xl blur-lg opacity-20 group-hover:opacity-30 transition-opacity" />
-              <div className="relative bg-[#0F172A] text-white font-black py-5 rounded-2xl shadow-xl transition-all active:scale-[0.98] flex items-center justify-center gap-3 overflow-hidden">
+              <div className="absolute inset-0 bg-emerald-500 rounded-2xl blur-xl opacity-20 group-hover:opacity-40 transition-opacity" />
+              <div className="relative bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black py-5 rounded-2xl shadow-xl transition-all active:scale-[0.99] flex items-center justify-center gap-4 group-hover:shadow-emerald-500/20 group-hover:-translate-y-0.5">
                 {loading ? (
-                  <Loader2 className="w-5 h-5 animate-spin text-emerald-400" />
+                  <Loader2 className="w-6 h-6 animate-spin" />
                 ) : (
                   <>
-                    <span className="text-[12px] uppercase tracking-[0.2em]">{mode === "login" ? "الدخول" : "تأكيد الانضمام"}</span>
-                    <Sparkles className="w-4 h-4 text-emerald-400" />
+                    <span className="text-sm uppercase tracking-[0.2em]">{mode === "login" ? "تسجيل الدخول" : "إنشاء حساب جديد"}</span>
+                    <ArrowRight className="w-5 h-5 group-hover:translate-x-[-4px] transition-transform" />
                   </>
                 )}
-
-                {/* Shine Hover Effect */}
-                <div className="absolute inset-0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/5 to-transparent shadow-xl" />
               </div>
             </button>
           </form>
         </div>
 
-        <p className="text-center text-slate-400 text-[9px] font-bold uppercase tracking-[0.3em] mt-8 opacity-60">
-          نورونا . تجربة دينية مشتركة
+        {/* Footer info */}
+        <p className="text-center text-white/30 text-[10px] font-bold uppercase tracking-[0.5em] mt-12 pb-10">
+          NORNA • AUTHENTIC SPIRITUAL CONNECT
         </p>
       </motion.div>
     </div>
-  );
-}
-
-// Custom Loader Icon for better styling
-function Loader2({ className }: { className?: string }) {
-  return (
-    <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-    </svg>
   );
 }

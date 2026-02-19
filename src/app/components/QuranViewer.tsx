@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { BookOpen, X, Loader2, Search, ChevronRight, ChevronLeft, Play, Pause, Bookmark, Award, BookHeart, Calendar, Clock, CheckCircle2, Users, Eye, EyeOff, Settings2, Palette, Sparkles, Volume2, Layout, Check, Monitor, Type, Minus, Plus, Gauge, Trash2 } from 'lucide-react';
+import { ChevronRight, ChevronLeft, X, Settings2, Minus, Plus, Palette, Type, Check, Play, Pause, Volume2, Search, BookOpen, Clock, Heart, Share2, MoreVertical, Gauge, Sparkles, Brain, Loader2, Lightbulb, Bookmark, Award, BookHeart, Calendar, Trash2, Users, Eye, EyeOff, Layout, Monitor, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { updateQuranProgress, saveQuranBookmark, getQuranBookmark, getActiveKhatma, createNewKhatma, updateKhatmaProgress, deleteKhatma, getPartner, getActiveSharedKhatma, createSharedKhatma, updateSharedKhatmaProgress } from '../utils/db';
@@ -116,11 +116,13 @@ export function QuranViewer({ jumpToBookmark, initialSurah, onJumped }: QuranVie
     const [isInitialized, setIsInitialized] = useState(false);
     const [isLoadingData, setIsLoadingData] = useState(true);
     const [isReadyToSave, setIsReadyToSave] = useState(false);
+    // Ref to prevent double-triggering auto-resume
+    const hasAutoResumedRef = useRef(false);
 
     // Settings State
     const [showSettings, setShowSettings] = useState(false);
     const [readerTheme, setReaderTheme] = useState('classic');
-    const [fontSize, setFontSize] = useState(30);
+    const [fontSize, setFontSize] = useState(22);
     const [playbackSpeed, setPlaybackSpeed] = useState(1);
 
     useEffect(() => {
@@ -259,29 +261,74 @@ export function QuranViewer({ jumpToBookmark, initialSurah, onJumped }: QuranVie
     // Standard Madani Mushaf Page Starts for 114 Surahs
     const SURAH_START_PAGES = [1, 2, 50, 77, 106, 128, 151, 177, 187, 208, 221, 235, 249, 255, 262, 267, 282, 293, 305, 312, 322, 332, 342, 350, 359, 367, 377, 385, 396, 404, 411, 415, 418, 428, 434, 440, 446, 453, 458, 467, 477, 483, 489, 496, 499, 502, 507, 511, 515, 518, 520, 523, 526, 528, 531, 534, 537, 542, 545, 549, 551, 553, 554, 556, 558, 560, 562, 564, 566, 568, 570, 572, 574, 575, 577, 578, 580, 582, 583, 585, 586, 587, 587, 589, 590, 591, 591, 592, 593, 594, 595, 595, 596, 596, 597, 597, 598, 598, 599, 599, 600, 600, 601, 601, 601, 602, 602, 602, 603, 603, 603, 604, 604, 604];
 
+    // Hide global navigation when reading
+    useEffect(() => {
+        window.dispatchEvent(new CustomEvent('hideBottomNav', { detail: !!selectedSurah }));
+        return () => {
+            window.dispatchEvent(new CustomEvent('hideBottomNav', { detail: false }));
+        };
+    }, [!!selectedSurah]);
+
     useEffect(() => {
         const user = localStorage.getItem('nooruna_user');
         if (user) {
             const userData = JSON.parse(user);
-            setCurrentUserId(userData.id);
-            loadUserProgress(userData.id).finally(() => {
-                setIsLoadingData(false);
-                // If there's NO initial Surah and NO jump, we are initialized on the list
-                if (!initialSurah && !jumpToBookmark) {
+            const userId = userData.id;
+            setCurrentUserId(userId);
+
+            // ─── INSTANT RESTORE ─────────────────────────────────────────
+            // Read saved position from localStorage SYNCHRONOUSLY (no waiting
+            // for Supabase or surahs API). This is the only reliable way to
+            // restore position on every refresh/tab-switch.
+            if (!initialSurah && !jumpToBookmark) {
+                const localRaw = localStorage.getItem(`quran_bookmark_${userId}`);
+                if (localRaw) {
+                    try {
+                        const bm = JSON.parse(localRaw);
+                        if (bm.page_number && bm.surah_number) {
+                            console.log('⚡ Instant restore from localStorage → page', bm.page_number, bm.surah_name);
+                            setUserBookmark(bm);
+                            setCurrentPage(bm.page_number);
+                            // Set a minimal selectedSurah so fetchPageContent will trigger
+                            // once surahs are loaded (the API response will update it fully).
+                            setSelectedSurah({
+                                number: bm.surah_number,
+                                name: bm.surah_name,
+                                englishName: '',
+                                englishNameTranslation: '',
+                                numberOfAyahs: 0,
+                                revelationType: ''
+                            });
+                            setIsInitialized(true);
+                            setTimeout(() => setIsReadyToSave(true), 2000);
+                        }
+                    } catch (e) { console.error('Bookmark parse error', e); }
+                } else {
+                    // No local bookmark = brand new user, show surah list
                     setIsInitialized(true);
                 }
-            });
+            }
+            // ─────────────────────────────────────────────────────────────
+
+            // Background sync from Supabase (updates localStorage with latest DB data)
+            loadUserProgress(userId).finally(() => setIsLoadingData(false));
         }
         fetchSurahs();
     }, []);
 
     const loadUserProgress = async (userId: string) => {
         console.log('🔄 Loading user progress for:', userId);
+
+        // Always read current localStorage state first — it is the source of truth
+        const localRaw = localStorage.getItem(`quran_bookmark_${userId}`);
+        const localBookmark = localRaw ? JSON.parse(localRaw) : null;
+
         let bookmark = await getQuranBookmark(userId);
 
         if (bookmark) {
-            console.log('✅ Found bookmark:', bookmark.surah_name, 'Page', bookmark.page_number);
-            // Smart Data Recovery: If page_number is missing, fetch it and update the DB
+            console.log('✅ Found Supabase bookmark:', bookmark.surah_name, 'Page', bookmark.page_number, 'Updated:', bookmark.updated_at);
+
+            // Smart Data Recovery: If page_number is missing in Supabase data
             if (!bookmark.page_number) {
                 try {
                     const response = await fetch(`https://api.alquran.cloud/v1/ayah/${bookmark.surah_number}:${bookmark.ayah_number}/quran-uthmani`);
@@ -294,17 +341,36 @@ export function QuranViewer({ jumpToBookmark, initialSurah, onJumped }: QuranVie
                     console.error("Failed to recover page number for bookmark", e);
                 }
             }
-            setUserBookmark(bookmark);
 
-            // Backup to LocalStorage
-            localStorage.setItem(`quran_bookmark_${userId}`, JSON.stringify(bookmark));
-        } else {
-            // Check LocalStorage Fallback
-            const local = localStorage.getItem(`quran_bookmark_${userId}`);
-            if (local) {
-                const localBookmark = JSON.parse(local);
-                console.log('📦 Found localStorage bookmark fallback:', localBookmark.surah_name);
+            // ✅ KEY FIX: Only use Supabase data if it is NEWER than localStorage.
+            // localStorage is updated instantly on every save/page-change.
+            // Supabase may lag behind if the upsert was slow or failed.
+            const dbDate = bookmark.updated_at ? new Date(bookmark.updated_at).getTime() : 0;
+            const localDate = localBookmark?.updated_at ? new Date(localBookmark.updated_at).getTime() : 0;
+
+            if (dbDate >= localDate) {
+                // Supabase is up-to-date — use it and sync to localStorage
+                console.log('☁️  Supabase bookmark is newer or equal, applying it.');
+                setUserBookmark(bookmark);
+                localStorage.setItem(`quran_bookmark_${userId}`, JSON.stringify(bookmark));
+                // Also navigate to this page if we haven't yet
+                if (bookmark.page_number && bookmark.page_number !== currentPage) {
+                    setCurrentPage(bookmark.page_number);
+                }
+            } else {
+                // localStorage is newer — push it back up to Supabase, don't overwrite local
+                console.log('💾 localStorage bookmark is newer (page', localBookmark.page_number, '> DB page', bookmark.page_number, '), keeping local and syncing to DB.');
                 setUserBookmark(localBookmark);
+                // Push the newer local data back to Supabase
+                saveQuranBookmark(userId, localBookmark.surah_number, localBookmark.surah_name, localBookmark.ayah_number, localBookmark.page_number);
+            }
+        } else {
+            // No Supabase record — use localStorage if available
+            if (localBookmark) {
+                console.log('📦 No Supabase record, using localStorage bookmark:', localBookmark.surah_name, 'page', localBookmark.page_number);
+                setUserBookmark(localBookmark);
+                // Push to Supabase so it's there next time
+                saveQuranBookmark(userId, localBookmark.surah_number, localBookmark.surah_name, localBookmark.ayah_number, localBookmark.page_number);
             }
         }
 
@@ -496,52 +562,66 @@ export function QuranViewer({ jumpToBookmark, initialSurah, onJumped }: QuranVie
         setTimeout(() => setIsReadyToSave(true), 1000); // Allow safe delay
     };
 
-    const handleContinueReading = async () => {
-        // Prefer UserBookmark, fallback to ActiveKhatma
-        const target = userBookmark || (activeKhatma ? {
+    const handleContinueReading = async (targetOverride?: typeof userBookmark) => {
+        const target = targetOverride || userBookmark || (activeKhatma ? {
             surah_number: activeKhatma.current_surah,
             surah_name: surahs.find(s => s.number === activeKhatma.current_surah)?.name || '',
             ayah_number: activeKhatma.current_ayah,
             page_number: activeKhatma.current_page
         } : null);
 
-        if (target && surahs.length > 0) {
-            const targetSurah = surahs.find(s => s.number === target.surah_number);
-            if (targetSurah) setSelectedSurah(targetSurah);
+        if (!target || surahs.length === 0) return;
 
-            setLoadingAyahs(true);
-            try {
-                const response = await fetch(`https://api.alquran.cloud/v1/ayah/${target.surah_number}:${target.ayah_number}/quran-uthmani`);
-                const data = await response.json();
-                if (data.data) {
-                    const page = data.data.page;
-                    setCurrentPage(page);
+        const targetSurah = surahs.find(s => s.number === target.surah_number);
+        if (targetSurah) setSelectedSurah(targetSurah);
 
-                    // Smart Fix: If missing page_number, update it now
-                    if (!target.page_number && userBookmark) {
-                        await saveQuranBookmark(currentUserId, target.surah_number, target.surah_name, target.ayah_number, page);
-                        setUserBookmark({ ...userBookmark, page_number: page });
-                    }
-                    setIsInitialized(true);
+        // ✅ If page_number is already known, use it directly — no API call needed
+        if (target.page_number) {
+            console.log('✅ Restoring to page', target.page_number, 'surah', target.surah_name);
+            setCurrentPage(target.page_number);
+            setIsInitialized(true);
+            setTimeout(() => setIsReadyToSave(true), 1500);
+            return;
+        }
+
+        // Fallback: fetch page number from API (only if page_number missing)
+        setLoadingAyahs(true);
+        try {
+            const response = await fetch(`https://api.alquran.cloud/v1/ayah/${target.surah_number}:${target.ayah_number}/quran-uthmani`);
+            const data = await response.json();
+            if (data.data) {
+                const page = data.data.page;
+                setCurrentPage(page);
+                // Save the recovered page_number
+                if (userBookmark) {
+                    const updated = { ...userBookmark, page_number: page };
+                    setUserBookmark(updated);
+                    localStorage.setItem(`quran_bookmark_${currentUserId}`, JSON.stringify(updated));
+                    saveQuranBookmark(currentUserId, target.surah_number, target.surah_name, target.ayah_number, page);
                 }
-            } catch (error) {
-                console.error('Error jumping to bookmark:', error);
-                const startPage = SURAH_START_PAGES[target.surah_number - 1] || 1;
-                setCurrentPage(startPage);
                 setIsInitialized(true);
-                setTimeout(() => setIsReadyToSave(true), 1000);
-            } finally {
-                setLoadingAyahs(false);
+                setTimeout(() => setIsReadyToSave(true), 1500);
             }
+        } catch (error) {
+            console.error('Error jumping to bookmark:', error);
+            const startPage = SURAH_START_PAGES[target.surah_number - 1] || 1;
+            setCurrentPage(startPage);
+            setIsInitialized(true);
+            setTimeout(() => setIsReadyToSave(true), 1000);
+        } finally {
+            setLoadingAyahs(false);
         }
     };
 
     useEffect(() => {
-        if (!isLoadingData && jumpToBookmark && surahs.length > 0 && userBookmark) {
+        // Handle EXPLICIT jumps from outside (home screen Continue Reading, etc.)
+        if (!isLoadingData && jumpToBookmark && userBookmark && surahs.length > 0 && !hasAutoResumedRef.current) {
+            hasAutoResumedRef.current = true;
             handleContinueReading();
             onJumped?.();
         }
     }, [isLoadingData, jumpToBookmark, surahs, !!userBookmark]);
+
 
     useEffect(() => {
         if (!isLoadingData && initialSurah && surahs.length > 0) {
@@ -556,6 +636,44 @@ export function QuranViewer({ jumpToBookmark, initialSurah, onJumped }: QuranVie
     const getTotalPages = () => {
         return TOTAL_PAGES_QURAN;
     };
+
+    const prevPage = () => {
+        if (currentPage > 1) {
+            setCurrentPage(p => p - 1);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            resetControlsTimeout();
+        }
+    };
+
+    const nextPage = () => {
+        if (currentPage < TOTAL_PAGES_QURAN) {
+            setCurrentPage(p => p + 1);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            resetControlsTimeout();
+        } else {
+            setSelectedSurah(null);
+        }
+    };
+
+    useEffect(() => {
+        if (!selectedSurah) return;
+
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'ArrowLeft') {
+                // In RTL, ArrowLeft usually means "forward" or "next" 
+                // but let's stick to logical direction.
+                // Usually for Quran, Left is Next page (move towards page 1) in some apps, 
+                // but here we use LTR logical progression (1 -> 604).
+                // So ArrowRight = p + 1 (forward in reading), ArrowLeft = p - 1 (back).
+                prevPage();
+            } else if (e.key === 'ArrowRight') {
+                nextPage();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [selectedSurah, currentPage]);
 
     const getCurrentPageAyahs = (): Ayah[] => {
         if (!surahData) return [];
@@ -580,29 +698,6 @@ export function QuranViewer({ jumpToBookmark, initialSurah, onJumped }: QuranVie
         }
     };
 
-    const handleAyahMouseDown = (ayah: Ayah) => {
-        isLongPressRef.current = false;
-        longPressTimerRef.current = setTimeout(() => {
-            isLongPressRef.current = true;
-            fetchTafsir(ayah);
-        }, 500); // 500ms long press
-    };
-
-    const handleAyahMouseUp = () => {
-        if (longPressTimerRef.current) {
-            clearTimeout(longPressTimerRef.current);
-            longPressTimerRef.current = null;
-        }
-    };
-
-    const handleAyahTouchStart = (ayah: Ayah) => {
-        handleAyahMouseDown(ayah);
-    };
-
-    const handleAyahTouchEnd = () => {
-        handleAyahMouseUp();
-    };
-
     const fetchTafsir = async (ayah: Ayah) => {
         setLoadingTafsir(true);
         setShowTafsirModal(true);
@@ -623,21 +718,20 @@ export function QuranViewer({ jumpToBookmark, initialSurah, onJumped }: QuranVie
     };
 
     const handleAyahClick = (ayah: Ayah) => {
-        // Prevent click action if it was a long press
-        if (isLongPressRef.current) return;
-
         resetControlsTimeout(); // Show UI on click
 
         if (isHifzMode) {
-            // In Hifz Mode, click toggles visibility
-            const newRevealed = new Set(revealedAyahs);
-            if (newRevealed.has(ayah.number)) {
-                newRevealed.delete(ayah.number);
-                // If hiding again, maybe stop playing if it was playing? 
-            } else {
+            // In Hifz Mode, first click reveals text, second click plays audio
+            const isRevealed = revealedAyahs.has(ayah.number);
+
+            if (!isRevealed) {
+                const newRevealed = new Set(revealedAyahs);
                 newRevealed.add(ayah.number);
+                setRevealedAyahs(newRevealed);
+            } else {
+                // Ayah is already revealed, so play it
+                togglePlayAyah(ayah);
             }
-            setRevealedAyahs(newRevealed);
             return;
         }
 
@@ -655,17 +749,7 @@ export function QuranViewer({ jumpToBookmark, initialSurah, onJumped }: QuranVie
     };
 
     const handleAyahDoubleClick = (ayah: Ayah) => {
-        // If we are double clicking the SAME ayah that is playing/paused?
-        // Logic: Double click sets the STOP point.
-        // It should NOT jump playback.
-
-        // If user double clicks an ayah, we set it as the stop point.
-        setStopAtAyah(ayah.number);
-        toast.info(`سيتم التوقف عند الآية ${ayah.numberInSurah}`, {
-            icon: '🛑',
-            position: 'top-center',
-            className: 'font-bold font-amiri'
-        });
+        fetchTafsir(ayah);
     };
 
     const playNextAyah = () => {
@@ -870,13 +954,11 @@ export function QuranViewer({ jumpToBookmark, initialSurah, onJumped }: QuranVie
 
 
     useEffect(() => {
-        if (currentAyahPlaying) {
-            resetControlsTimeout();
-        }
+        // Cleanup timeout on unmount
         return () => {
             if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
         };
-    }, [currentAyahPlaying, isPlaying]);
+    }, []);
 
     // Swipe Handlers
     const onTouchStart = (e: React.TouchEvent) => {
@@ -963,7 +1045,7 @@ export function QuranViewer({ jumpToBookmark, initialSurah, onJumped }: QuranVie
                             {/* 1. Right Column (RTL): Continue Reading */}
                             <div>
                                 {userBookmark ? (
-                                    <div className="bg-gradient-to-br from-[#064e3b] to-[#065f46] rounded-[2.5rem] p-7 text-white shadow-xl shadow-emerald-900/10 relative overflow-hidden group hover:scale-[1.02] transition-all cursor-pointer h-full min-h-[200px] border border-white/5" onClick={handleContinueReading}>
+                                    <div className="bg-gradient-to-br from-[#064e3b] to-[#065f46] rounded-[2.5rem] p-7 text-white shadow-xl shadow-emerald-900/10 relative overflow-hidden group hover:scale-[1.02] transition-all cursor-pointer h-full min-h-[200px] border border-white/5" onClick={() => handleContinueReading()}>
                                         <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-white/10 transition-colors"></div>
                                         <div className="relative z-10 flex flex-col h-full">
                                             {/* Top Section */}
@@ -1029,7 +1111,7 @@ export function QuranViewer({ jumpToBookmark, initialSurah, onJumped }: QuranVie
 
                                                 {/* Last Read Row */}
                                                 <div
-                                                    onClick={handleContinueReading}
+                                                    onClick={() => handleContinueReading()}
                                                     className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-3xl mb-6 border border-dashed border-slate-200 dark:border-white/5 cursor-pointer hover:bg-emerald-50/50 dark:hover:bg-emerald-500/5 transition-colors group"
                                                 >
                                                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">آخر إنجاز لك</div>
@@ -1060,7 +1142,7 @@ export function QuranViewer({ jumpToBookmark, initialSurah, onJumped }: QuranVie
 
                                                 <div className="flex gap-2 mt-6">
                                                     <button
-                                                        onClick={handleContinueReading}
+                                                        onClick={() => handleContinueReading()}
                                                         className="flex-[2] py-4 bg-emerald-600 text-white rounded-2xl font-black text-sm shadow-lg shadow-emerald-500/20 hover:scale-[1.02] transition-transform flex items-center justify-center gap-2"
                                                     >
                                                         <Play className="w-4 h-4 fill-current" />
@@ -1296,17 +1378,14 @@ export function QuranViewer({ jumpToBookmark, initialSurah, onJumped }: QuranVie
 
                             <div className="flex flex-col items-center">
                                 <span className={`font-amiri text-xl font-bold ${currentTheme.text} dark:text-white leading-none mb-1`}>{selectedSurah.name}</span>
-                                <div className="flex items-center gap-2 text-[10px] font-bold text-emerald-600/80 uppercase tracking-widest">
+                                <div className="flex items-center gap-2 text-[10px] font-black text-emerald-600/80 uppercase tracking-widest bg-emerald-500/5 px-3 py-1 rounded-full border border-emerald-500/10">
                                     <span>{selectedSurah.revelationType === 'Meccan' ? 'مكية' : 'مدنية'}</span>
-                                    <span className="w-1 h-1 bg-emerald-200 rounded-full"></span>
-                                    <span>{toArabicDigits(selectedSurah.numberOfAyahs)} آيـة</span>
+                                    <span className="w-1 h-1 bg-emerald-500 rounded-full"></span>
+                                    <span className="tabular-nums">{toArabicDigits(selectedSurah.numberOfAyahs)} آيـة</span>
                                     {isHifzMode && (
                                         <>
-                                            <span className="w-1 h-1 bg-emerald-200 rounded-full"></span>
-                                            <span className="flex items-center gap-1 text-indigo-500">
-                                                <Sparkles className="w-3 h-3" />
-                                                <span>وضع الحفظ</span>
-                                            </span>
+                                            <span className="w-1 h-1 bg-indigo-400 rounded-full"></span>
+                                            <span className="text-indigo-500 font-black">وضع الحفظ</span>
                                         </>
                                     )}
                                 </div>
@@ -1334,6 +1413,30 @@ export function QuranViewer({ jumpToBookmark, initialSurah, onJumped }: QuranVie
                             ) : (
                                 <div className="min-h-full py-8 px-2 sm:px-6 flex flex-col items-center pb-32">
                                     <div className={`w-full max-w-3xl bg-white dark:bg-slate-900 shadow-sm border ${currentTheme.border} dark:border-white/5 rounded-[4px] p-6 sm:p-12 md:p-16 relative transition-colors duration-500`}>
+
+                                        {/* Desktop Side Navigation Zones */}
+                                        <div className="hidden lg:block">
+                                            {/* Previous Page Zone (Right side in RTL) */}
+                                            <button
+                                                onClick={prevPage}
+                                                disabled={currentPage === 1}
+                                                className="fixed right-0 top-0 bottom-0 w-20 flex items-center justify-center group/side z-[4500] disabled:opacity-0"
+                                            >
+                                                <div className="bg-white/5 backdrop-blur-md h-32 w-12 rounded-l-3xl border-l border-white/10 flex items-center justify-center translate-x-12 group-hover/side:translate-x-0 transition-transform duration-500 shadow-2xl">
+                                                    <ChevronRight className="w-6 h-6 text-slate-400 group-hover/side:text-emerald-500 transition-colors" />
+                                                </div>
+                                            </button>
+
+                                            {/* Next Page Zone (Left side in RTL) */}
+                                            <button
+                                                onClick={nextPage}
+                                                className="fixed left-0 top-0 bottom-0 w-20 flex items-center justify-center group/side z-[4500]"
+                                            >
+                                                <div className="bg-white/5 backdrop-blur-md h-32 w-12 rounded-r-3xl border-r border-white/10 flex items-center justify-center -translate-x-12 group-hover/side:translate-x-0 transition-transform duration-500 shadow-2xl">
+                                                    <ChevronLeft className="w-6 h-6 text-slate-400 group-hover/side:text-emerald-500 transition-colors" />
+                                                </div>
+                                            </button>
+                                        </div>
 
                                         {/* Decorative Borders */}
                                         <div className={`absolute top-4 left-4 right-4 bottom-4 border ${currentTheme.border} dark:border-white/5 pointer-events-none rounded-[2px]`}></div>
@@ -1364,11 +1467,6 @@ export function QuranViewer({ jumpToBookmark, initialSurah, onJumped }: QuranVie
 
                                                     <span
                                                         onClick={() => handleAyahClick(ayah)}
-                                                        onMouseDown={() => handleAyahMouseDown(ayah)}
-                                                        onMouseUp={handleAyahMouseUp}
-                                                        onMouseLeave={handleAyahMouseUp}
-                                                        onTouchStart={() => handleAyahTouchStart(ayah)}
-                                                        onTouchEnd={handleAyahTouchEnd}
                                                         className={`cursor-pointer decoration-clone box-decoration-clone px-0.5 rounded transition-all select-none ${isHifzMode && !revealedAyahs.has(ayah.number)
                                                             ? 'text-transparent bg-clip-text bg-gradient-to-r from-slate-200 to-slate-200 blur-[6px] dark:from-slate-700 dark:to-slate-700'
                                                             : currentAyahPlaying === ayah.number
@@ -1402,32 +1500,13 @@ export function QuranViewer({ jumpToBookmark, initialSurah, onJumped }: QuranVie
 
                                     </div>
 
-                                    <div className="mt-6 text-[10px] font-bold text-slate-400 tracking-widest uppercase text-center pb-32">
-                                        الصفحة {toArabicDigits(currentPage)} من {toArabicDigits(getTotalPages())}
+                                    <div className="mt-12 flex flex-col items-center gap-3 pb-32">
+                                        <div className="h-[1px] w-24 bg-gradient-to-r from-transparent via-slate-200 dark:via-white/10 to-transparent"></div>
+                                        <div className="px-6 py-2 rounded-full bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 text-[10px] font-black text-slate-400 dark:text-slate-500 tracking-[0.2em] uppercase tabular-nums">
+                                            صفحة {toArabicDigits(currentPage)} من {toArabicDigits(getTotalPages())}
+                                        </div>
                                     </div>
 
-                                    {/* Footer Nav */}
-                                    <div className="flex items-center justify-between w-full max-w-3xl mt-10">
-                                        <button
-                                            disabled={currentPage === 1}
-                                            onClick={() => { setCurrentPage(p => p - 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                                            className="flex items-center gap-2 px-6 py-3 rounded-full bg-white dark:bg-white/5 shadow-sm border border-slate-200 dark:border-white/5 text-slate-600 dark:text-slate-300 font-bold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 transition-all text-sm"
-                                        >
-                                            <ChevronRight className="w-4 h-4" />
-                                            <span>السابق</span>
-                                        </button>
-
-                                        <button
-                                            onClick={() => {
-                                                if (currentPage < getTotalPages()) { setCurrentPage(p => p + 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }
-                                                else setSelectedSurah(null);
-                                            }}
-                                            className="flex items-center gap-2 px-6 py-3 rounded-full bg-emerald-600 text-white shadow-lg shadow-emerald-600/20 font-bold hover:bg-emerald-700 transition-all text-sm"
-                                        >
-                                            <span>{currentPage === getTotalPages() ? 'ختم السورة' : 'الصفحة التالية'}</span>
-                                            <ChevronLeft className="w-4 h-4 text-white/80" />
-                                        </button>
-                                    </div>
                                 </div>
                             )}
                         </div>
@@ -1435,9 +1514,60 @@ export function QuranViewer({ jumpToBookmark, initialSurah, onJumped }: QuranVie
                         <audio ref={audioRef} onEnded={playNextAyah} />
 
                         {/* Floating Audio Controller */}
+                        <AnimatePresence>
+                            {(currentAyahPlaying || isPlaying || (isHifzMode && hifzModeType === 'auto')) && showPlayerControls && (
+                                <motion.div
+                                    initial={{ y: 100, opacity: 0 }}
+                                    animate={{ y: 0, opacity: 1 }}
+                                    exit={{ y: 100, opacity: 0 }}
+                                    className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[4000] w-[95%] max-w-md h-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-[2.5rem] border border-white/20 dark:border-white/5 shadow-[0_20px_50px_rgba(0,0,0,0.1)] flex items-center justify-between px-8"
+                                >
+                                    <div className="flex items-center gap-4">
+                                        <button
+                                            onClick={prevPage}
+                                            className="w-10 h-10 rounded-full flex items-center justify-center text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-all"
+                                        >
+                                            <ChevronRight className="w-6 h-6" />
+                                        </button>
 
+                                        <button
+                                            onClick={() => {
+                                                if (isHifzMode && hifzModeType === 'auto' && !hifzSyncWithAudio) {
+                                                    setIsHifzFlowing(!isHifzFlowing);
+                                                } else if (currentAyahPlaying) {
+                                                    if (isPlaying) { audioRef.current?.pause(); setIsPlaying(false); }
+                                                    else { audioRef.current?.play(); setIsPlaying(true); }
+                                                } else {
+                                                    // Start from first ayah on page if nothing playing
+                                                    const firstAyah = getCurrentPageAyahs()[0];
+                                                    if (firstAyah) togglePlayAyah(firstAyah);
+                                                }
+                                            }}
+                                            className="w-14 h-14 rounded-full bg-emerald-600 text-white flex items-center justify-center shadow-lg shadow-emerald-500/40 hover:scale-105 active:scale-95 transition-all"
+                                        >
+                                            {(isPlaying || (isHifzMode && hifzModeType === 'auto' && isHifzFlowing)) ? <Pause className="w-6 h-6 fill-current" /> : <Play className="w-6 h-6 fill-current translate-x-0.5" />}
+                                        </button>
 
+                                        <button
+                                            onClick={nextPage}
+                                            className="w-10 h-10 rounded-full flex items-center justify-center text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-all"
+                                        >
+                                            <ChevronLeft className="w-6 h-6" />
+                                        </button>
+                                    </div>
 
+                                    <div className="flex flex-col items-end gap-0.5">
+                                        <div className="flex items-center gap-2">
+                                            {isHifzMode && (
+                                                <span className="text-[9px] font-black bg-indigo-500 text-white px-2 py-0.5 rounded-full uppercase tracking-widest">Hifz</span>
+                                            )}
+                                            <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">{selectedSurah.name}</span>
+                                        </div>
+                                        <span className="text-[10px] font-bold text-slate-400">صفحة {toArabicDigits(currentPage)} • آية {toArabicDigits(currentAyahPlaying ? getCurrentPageAyahs().find(a => a.number === currentAyahPlaying)?.numberInSurah || 1 : 1)}</span>
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
                         {/* Settings Modal */}
                         <AnimatePresence>
                             {showSettings && (
@@ -1464,197 +1594,197 @@ export function QuranViewer({ jumpToBookmark, initialSurah, onJumped }: QuranVie
                                             </div>
                                         </div>
 
-                                        <div className="overflow-y-auto flex-1 p-6">
-                                            <div className="space-y-8">
-                                                {/* Theme & Font Settings */}
-                                                <div>
-                                                    <div className="flex items-center gap-2 mb-3 text-slate-400 font-bold text-xs uppercase tracking-wider">
-                                                        <Palette className="w-4 h-4" />
-                                                        <span>المظهر والنصوص</span>
-                                                    </div>
+                                        <div className="overflow-y-auto flex-1 p-6 space-y-6">
+                                            {/* Section: Appearance */}
+                                            <div className="bg-slate-50/50 dark:bg-white/[0.02] rounded-[2rem] p-6 border border-slate-100 dark:border-white/5">
+                                                <div className="flex items-center gap-2 mb-6 text-slate-400 font-black text-[10px] uppercase tracking-widest">
+                                                    <Palette className="w-4 h-4 text-emerald-500" />
+                                                    <span>المظهر والنصوص</span>
+                                                </div>
 
-                                                    {/* Themes Grid */}
-                                                    <div className="grid grid-cols-4 gap-3 mb-6">
-                                                        {THEMES.map((theme) => (
-                                                            <button
-                                                                key={theme.id}
-                                                                onClick={() => setReaderTheme(theme.id)}
-                                                                className={`relative h-14 rounded-2xl border-2 transition-all flex items-center justify-center ${readerTheme === theme.id ? 'border-emerald-500 scale-105 shadow-md' : 'border-transparent hover:scale-105'}`}
+                                                {/* Themes Grid */}
+                                                <div className="grid grid-cols-4 gap-4 mb-8">
+                                                    {THEMES.map((theme) => (
+                                                        <button
+                                                            key={theme.id}
+                                                            onClick={() => setReaderTheme(theme.id)}
+                                                            className="flex flex-col items-center gap-2 group/theme"
+                                                        >
+                                                            <div
+                                                                className={`relative w-full aspect-square rounded-2xl border-2 transition-all flex items-center justify-center ${readerTheme === theme.id ? 'border-emerald-500 scale-105 shadow-lg shadow-emerald-500/10' : 'border-slate-100 dark:border-white/5 hover:scale-105'}`}
                                                                 style={{ backgroundColor: theme.preview }}
                                                             >
                                                                 {readerTheme === theme.id && (
-                                                                    <div className="bg-emerald-500 rounded-full p-1 shadow-sm">
+                                                                    <div className="bg-emerald-500 rounded-full p-1.5 shadow-sm border-2 border-white dark:border-slate-900">
                                                                         <Check className="w-3 h-3 text-white" />
                                                                     </div>
                                                                 )}
+                                                            </div>
+                                                            <span className={`text-[9px] font-black transition-colors ${readerTheme === theme.id ? 'text-emerald-600' : 'text-slate-400'}`}>
+                                                                {theme.name}
+                                                            </span>
+                                                        </button>
+                                                    ))}
+                                                </div>
+
+                                                {/* Font Size Control */}
+                                                <div className="flex items-center justify-between bg-white dark:bg-white/5 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-white/5">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-white/5 flex items-center justify-center text-slate-400">
+                                                            <Type className="w-5 h-5" />
+                                                        </div>
+                                                        <span className="font-black text-slate-700 dark:text-slate-300 text-xs">حجم الخط</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-4 bg-slate-50 dark:bg-black/20 p-1.5 rounded-xl">
+                                                        <button
+                                                            onClick={() => setFontSize(s => Math.max(16, s - 2))}
+                                                            className="w-8 h-8 flex items-center justify-center rounded-lg bg-white dark:bg-white/10 shadow-sm text-slate-600 dark:text-slate-300 active:scale-95 transition-all"
+                                                        >
+                                                            <Minus className="w-4 h-4" />
+                                                        </button>
+                                                        <span className="font-mono font-black w-8 text-center text-slate-800 dark:text-white text-base leading-none pt-1">
+                                                            {fontSize}
+                                                        </span>
+                                                        <button
+                                                            onClick={() => setFontSize(s => Math.min(64, s + 2))}
+                                                            className="w-8 h-8 flex items-center justify-center rounded-lg bg-white dark:bg-white/10 shadow-sm text-slate-600 dark:text-slate-300 active:scale-95 transition-all"
+                                                        >
+                                                            <Plus className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Section: Audio Settings */}
+                                            <div className="bg-slate-50/50 dark:bg-white/[0.02] rounded-[2rem] p-6 border border-slate-100 dark:border-white/5">
+                                                <div className="flex items-center gap-2 mb-6 text-slate-400 font-black text-[10px] uppercase tracking-widest">
+                                                    <Volume2 className="w-4 h-4 text-emerald-500" />
+                                                    <span>إعدادات الصوت والتلاوة</span>
+                                                </div>
+
+                                                {/* Playback Speed Mini Switcher */}
+                                                <div className="flex items-center justify-between mb-6">
+                                                    <div className="flex items-center gap-2">
+                                                        <Gauge className="w-4 h-4 text-slate-400" />
+                                                        <span className="text-[11px] font-black text-slate-500">سرعة التلاوة</span>
+                                                    </div>
+                                                    <div className="flex bg-slate-200/50 dark:bg-black/30 p-1 rounded-xl">
+                                                        {[0.75, 1, 1.25, 1.5].map(speed => (
+                                                            <button
+                                                                key={speed}
+                                                                onClick={() => setPlaybackSpeed(speed)}
+                                                                className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${playbackSpeed === speed ? 'bg-white dark:bg-slate-700 text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                                            >
+                                                                {speed}x
                                                             </button>
                                                         ))}
                                                     </div>
-
-                                                    {/* Font Size Control */}
-                                                    <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl flex items-center justify-between border border-slate-100 dark:border-white/5">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="w-10 h-10 rounded-full bg-white dark:bg-white/10 flex items-center justify-center text-slate-600 dark:text-slate-300 shadow-sm">
-                                                                <Type className="w-5 h-5" />
-                                                            </div>
-                                                            <span className="font-bold text-slate-700 dark:text-slate-200 text-sm">حجم الخط</span>
-                                                        </div>
-                                                        <div className="flex items-center gap-3">
-                                                            <button
-                                                                onClick={() => setFontSize(s => Math.max(18, s - 2))}
-                                                                className="w-8 h-8 flex items-center justify-center rounded-lg bg-white dark:bg-white/5 shadow-sm active:scale-95 transition-transform"
-                                                            >
-                                                                <Minus className="w-4 h-4" />
-                                                            </button>
-                                                            <span className="font-bold w-8 text-center text-slate-800 dark:text-white">{fontSize}</span>
-                                                            <button
-                                                                onClick={() => setFontSize(s => Math.min(60, s + 2))}
-                                                                className="w-8 h-8 flex items-center justify-center rounded-lg bg-white dark:bg-white/5 shadow-sm active:scale-95 transition-transform"
-                                                            >
-                                                                <Plus className="w-4 h-4" />
-                                                            </button>
-                                                        </div>
-                                                    </div>
                                                 </div>
 
-                                                {/* Smart Hifz Mode */}
-                                                <div className="bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-900/20 dark:to-blue-900/20 p-5 rounded-3xl border border-indigo-100 dark:border-indigo-500/20">
-                                                    <div className="flex items-center justify-between mb-4">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
-                                                                <Sparkles className="w-5 h-5" />
-                                                            </div>
-                                                            <div>
-                                                                <h4 className="font-bold text-slate-800 dark:text-white">التسميع الذكي</h4>
-                                                                <p className="text-[10px] text-slate-500 font-bold">اختبر حفظك بطرق تفاعلية</p>
-                                                            </div>
-                                                        </div>
+                                                {/* Reciter Selector */}
+                                                <div className="space-y-2 max-h-[280px] overflow-y-auto pr-2 custom-scrollbar">
+                                                    {RECITERS.map((reciter) => (
                                                         <button
-                                                            onClick={() => { setIsHifzMode(!isHifzMode); setRevealedAyahs(new Set()); }}
-                                                            className={`w-12 h-6 rounded-full transition-colors flex items-center px-1 ${isHifzMode ? 'bg-indigo-500 justify-end' : 'bg-slate-300 dark:bg-slate-700 justify-start'}`}
+                                                            key={reciter.id}
+                                                            onClick={() => { setSelectedReciter(reciter.id); toast.success(`تم اختيار: ${reciter.name}`, { position: 'bottom-center' }); }}
+                                                            className={`w-full flex items-center gap-4 p-3.5 rounded-2xl transition-all border ${selectedReciter === reciter.id
+                                                                ? 'bg-emerald-600 text-white border-emerald-500 shadow-lg shadow-emerald-500/20'
+                                                                : 'bg-white dark:bg-white/5 text-slate-600 dark:text-slate-300 border-slate-100 dark:border-white/5 hover:border-emerald-500/30'
+                                                                }`}
                                                         >
-                                                            <motion.div layout className="w-4 h-4 bg-white rounded-full shadow-sm" />
+                                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${selectedReciter === reciter.id ? 'bg-white/20' : 'bg-slate-100 dark:bg-white/5'}`}>
+                                                                {selectedReciter === reciter.id ? <Volume2 className="w-4 h-4" /> : <Play className="w-3 h-3 text-slate-400" />}
+                                                            </div>
+                                                            <span className="flex-1 text-right font-bold text-sm tracking-tight">{reciter.name}</span>
+                                                            {selectedReciter === reciter.id && (
+                                                                <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                                                            )}
                                                         </button>
-                                                    </div>
+                                                    ))}
+                                                </div>
+                                            </div>
 
-                                                    {isHifzMode && (
-                                                        <motion.div
-                                                            initial={{ opacity: 0, height: 0 }}
-                                                            animate={{ opacity: 1, height: 'auto' }}
-                                                            className="flex gap-2 p-1 bg-white/50 dark:bg-black/20 rounded-xl mt-2 overflow-hidden"
-                                                        >
+                                            {/* Section: Smart Hifz */}
+                                            <div className="relative overflow-hidden bg-gradient-to-br from-[#4338ca] to-[#3730a3] rounded-[2.5rem] p-8 text-white shadow-2xl shadow-indigo-500/20 border border-white/10">
+                                                {/* Decorative background element */}
+                                                <div className="absolute top-0 left-0 w-32 h-32 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16" />
+                                                <div className="absolute -bottom-8 -right-8 w-40 h-40 bg-indigo-400/10 rounded-full blur-3xl" />
+
+                                                <div className="relative z-10 flex items-center justify-between mb-8">
+                                                    <div className="text-right">
+                                                        <h4 className="font-black text-xl tracking-tight">وضع التسميع الذكي</h4>
+                                                        <p className="text-[11px] text-white/50 font-bold uppercase tracking-widest mt-1">ثبّت حفظك بطريقة تفاعلية</p>
+                                                    </div>
+                                                    <button
+                                                        onClick={() => { setIsHifzMode(!isHifzMode); setRevealedAyahs(new Set()); }}
+                                                        className={`w-14 h-7 rounded-full transition-all duration-500 flex items-center px-1.5 ${isHifzMode ? 'bg-white justify-end' : 'bg-white/20 justify-start'}`}
+                                                    >
+                                                        <motion.div layout className={`w-4 h-4 rounded-full shadow-lg ${isHifzMode ? 'bg-indigo-600' : 'bg-white'}`} />
+                                                    </button>
+                                                </div>
+
+                                                {isHifzMode && (
+                                                    <motion.div
+                                                        initial={{ opacity: 0, height: 0 }}
+                                                        animate={{ opacity: 1, height: 'auto' }}
+                                                        className="relative z-10 space-y-6"
+                                                    >
+                                                        <div className="flex gap-2 p-1.5 bg-white/10 rounded-2xl backdrop-blur-md border border-white/10">
                                                             <button
                                                                 onClick={() => { setHifzModeType('manual'); setRevealedAyahs(new Set()); }}
-                                                                className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${hifzModeType === 'manual' ? 'bg-white dark:bg-indigo-500 text-indigo-600 dark:text-white shadow-sm' : 'text-slate-500'}`}
+                                                                className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all ${hifzModeType === 'manual' ? 'bg-white text-indigo-600 shadow-xl' : 'text-white/60 hover:text-white'}`}
                                                             >
                                                                 يدوي (نقر)
                                                             </button>
                                                             <button
-                                                                onClick={() => { setHifzModeType('auto'); setRevealedAyahs(new Set()); setIsHifzFlowing(false); }}
-                                                                className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${hifzModeType === 'auto' ? 'bg-white dark:bg-indigo-500 text-indigo-600 dark:text-white shadow-sm' : 'text-slate-500'}`}
+                                                                onClick={() => { setHifzModeType('auto'); setRevealedAyahs(new Set()); setIsHifzFlowing(isPlaying); }}
+                                                                className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all ${hifzModeType === 'auto' ? 'bg-white text-indigo-600 shadow-xl' : 'text-white/60 hover:text-white'}`}
                                                             >
                                                                 تلقائي (جريان)
                                                             </button>
-                                                        </motion.div>
-                                                    )}
+                                                        </div>
 
-                                                    {isHifzMode && hifzModeType === 'auto' && (
-                                                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-4 space-y-4 pt-4 border-t border-indigo-100 dark:border-indigo-500/10">
-                                                            {/* Sync with Audio Toggle */}
-                                                            <div className="flex items-center justify-between bg-white/50 dark:bg-white/5 p-3 rounded-xl">
-                                                                <div className="flex items-center gap-2">
-                                                                    <Volume2 className="w-3.5 h-3.5 text-indigo-500" />
-                                                                    <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300">تزامن مع صوت القارئ</span>
-                                                                </div>
-                                                                <button
-                                                                    onClick={() => { setHifzSyncWithAudio(!hifzSyncWithAudio); setIsHifzFlowing(false); }}
-                                                                    className={`w-8 h-4 rounded-full transition-colors flex items-center px-0.5 ${hifzSyncWithAudio ? 'bg-indigo-500 justify-end' : 'bg-slate-300 dark:bg-slate-700 justify-start'}`}
-                                                                >
-                                                                    <div className="w-3 h-3 bg-white rounded-full shadow-sm" />
-                                                                </button>
-                                                            </div>
+                                                        <div className="px-2">
+                                                            <p className="text-[10px] text-indigo-200/70 font-bold leading-relaxed">
+                                                                {hifzModeType === 'manual'
+                                                                    ? "• انقر على الآية لإظهارها، وانقر مرة أخرى لتسمعها بصوت القارئ."
+                                                                    : "• سيقوم التطبيق بإظهار الآيات تباعاً بشكل تلقائي لتتمكن من التسميع."}
+                                                            </p>
+                                                        </div>
 
-                                                            {!hifzSyncWithAudio && (
-                                                                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="space-y-4">
-                                                                    <div className="flex items-center justify-between">
-                                                                        <span className="text-[10px] font-bold text-slate-500">سرعة الجريان (ثواني/آية)</span>
-                                                                        <span className="text-xs font-bold text-indigo-600">{hifzReadingSpeed}ث</span>
+                                                        {hifzModeType === 'auto' && (
+                                                            <div className="space-y-5 animate-in fade-in slide-in-from-top-2 duration-500">
+                                                                <div className="flex items-center justify-between bg-white/10 p-4 rounded-2xl border border-white/5">
+                                                                    <div className="flex items-center gap-3">
+                                                                        <Volume2 className="w-4 h-4 text-white/70" />
+                                                                        <span className="text-[11px] font-black text-white/90">تزامن مع صوت القارئ</span>
                                                                     </div>
-                                                                    <input
-                                                                        type="range" min="2" max="15" step="1"
-                                                                        value={hifzReadingSpeed}
-                                                                        onChange={(e) => setHifzReadingSpeed(parseInt(e.target.value))}
-                                                                        className="w-full h-1.5 bg-indigo-100 dark:bg-black/40 rounded-lg appearance-none cursor-pointer accent-indigo-500"
-                                                                    />
-                                                                </motion.div>
-                                                            )}
+                                                                    <button
+                                                                        onClick={() => { setHifzSyncWithAudio(!hifzSyncWithAudio); setIsHifzFlowing(false); }}
+                                                                        className={`w-10 h-5 rounded-full transition-all duration-300 flex items-center px-1 ${hifzSyncWithAudio ? 'bg-white justify-end' : 'bg-white/20 justify-start'}`}
+                                                                    >
+                                                                        <div className={`w-3 h-3 rounded-full shadow-sm ${hifzSyncWithAudio ? 'bg-indigo-600' : 'bg-white'}`} />
+                                                                    </button>
+                                                                </div>
 
-                                                            <button
-                                                                onClick={() => {
-                                                                    if (hifzSyncWithAudio) {
-                                                                        if (isPlaying) { audioRef.current?.pause(); setIsPlaying(false); }
-                                                                        else {
-                                                                            const targetAyah = surahData?.ayahs.find(a => a.number === (currentAyahPlaying || surahData.ayahs[0].number));
-                                                                            if (targetAyah) togglePlayAyah(targetAyah);
-                                                                        }
-                                                                    } else {
-                                                                        setIsHifzFlowing(!isHifzFlowing);
-                                                                    }
-                                                                }}
-                                                                className={`w-full py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all ${isHifzFlowing ? 'bg-red-50 text-red-500 border border-red-100' : 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20'}`}
-                                                            >
-                                                                {isHifzFlowing ? (
-                                                                    <><Pause className="w-3 h-3" /> إيقاف {hifzSyncWithAudio ? 'التلاوة والتحريك' : 'الجريان'}</>
-                                                                ) : (
-                                                                    <><Play className="w-3 h-3" /> بدء الجريان {hifzSyncWithAudio ? 'مع الصوت' : 'التلقائي'}</>
+                                                                {!hifzSyncWithAudio && (
+                                                                    <div className="space-y-4 px-1">
+                                                                        <div className="flex items-center justify-between">
+                                                                            <span className="text-[11px] font-black text-white/60">سرعة الجريان القلقائي</span>
+                                                                            <span className="text-xs font-black tabular-nums">{hifzReadingSpeed} ثواني</span>
+                                                                        </div>
+                                                                        <input
+                                                                            type="range" min="2" max="15" step="1"
+                                                                            value={hifzReadingSpeed}
+                                                                            onChange={(e) => setHifzReadingSpeed(parseInt(e.target.value))}
+                                                                            className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-white"
+                                                                        />
+                                                                    </div>
                                                                 )}
-                                                            </button>
-                                                        </motion.div>
-                                                    )}
-                                                </div>
-
-                                                {/* Audio Settings */}
-                                                <div>
-                                                    <div className="flex items-center gap-2 mb-3 text-slate-400 font-bold text-xs uppercase tracking-wider">
-                                                        <Volume2 className="w-4 h-4" />
-                                                        <span>إعدادات الصوت</span>
-                                                    </div>
-
-                                                    {/* Playback Speed */}
-                                                    <div className="mb-4">
-                                                        <div className="flex items-center gap-2 mb-2 text-sm font-bold text-slate-700 dark:text-slate-200">
-                                                            <Gauge className="w-4 h-4 text-emerald-500" />
-                                                            <span>سرعة التلاوة</span>
-                                                        </div>
-                                                        <div className="flex bg-slate-100 dark:bg-slate-800/50 p-1 rounded-xl">
-                                                            {[0.75, 1, 1.25, 1.5, 2].map(speed => (
-                                                                <button
-                                                                    key={speed}
-                                                                    onClick={() => setPlaybackSpeed(speed)}
-                                                                    className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${playbackSpeed === speed ? 'bg-white dark:bg-slate-700 text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
-                                                                >
-                                                                    {speed}x
-                                                                </button>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="grid grid-cols-1 gap-2 max-h-40 overflow-y-auto pr-1 custom-scrollbar">
-                                                        {RECITERS.map((reciter) => (
-                                                            <button
-                                                                key={reciter.id}
-                                                                onClick={() => { setSelectedReciter(reciter.id); toast.success(`تم اختيار: ${reciter.name}`, { position: 'bottom-center' }); }}
-                                                                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-bold transition-all ${selectedReciter === reciter.id
-                                                                    ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-500/20 shadow-sm'
-                                                                    : 'bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                                                                    }`}
-                                                            >
-                                                                <span>{reciter.name}</span>
-                                                                {selectedReciter === reciter.id && <Volume2 className="w-4 h-4" />}
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </motion.div>
+                                                )}
                                             </div>
                                         </div>
                                     </motion.div>

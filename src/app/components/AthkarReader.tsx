@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Sun, Moon, X, Loader2, Check, RotateCcw, Heart, Star, Sparkles, HandHeart, Plus, CheckCircle2, Calculator } from 'lucide-react';
+import { Sun, Moon, X, Loader2, Check, RotateCcw, Heart, Star, Sparkles, HandHeart, Plus, CheckCircle2, Calculator, Book, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { getAthkarProgress, updateAthkarProgress } from '../utils/db';
 import { useTimeOfDay } from '../hooks/useTimeOfDay';
 import { fetchJordanHolidays, Holiday } from '../utils/holidays';
 import { TasbihPage } from '../pages/TasbihPage';
+import { DuaaLibrary } from './DuaaLibrary';
 
 interface Zekr {
   zekr: string;
@@ -20,6 +21,7 @@ interface AthkarReaderProps {
 
 export function AthkarReader({ initialType }: AthkarReaderProps) {
   const [selectedType, setSelectedType] = useState<AthkarType | null>(initialType || null);
+  const [showDuaaLibrary, setShowDuaaLibrary] = useState(false);
 
   useEffect(() => {
     if (initialType) {
@@ -30,6 +32,16 @@ export function AthkarReader({ initialType }: AthkarReaderProps) {
   const [athkar, setAthkar] = useState<Zekr[]>([]);
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState<Record<number, number>>({});
+
+  // Hide global navigation when reading
+  useEffect(() => {
+    // Hide if we have a selected type (morning/evening) AND it's not the initial selection screen
+    // Actually, we want to hide it whenever we are "in" a reader view or library
+    window.dispatchEvent(new CustomEvent('hideBottomNav', { detail: !!selectedType || showDuaaLibrary }));
+    return () => {
+      window.dispatchEvent(new CustomEvent('hideBottomNav', { detail: false }));
+    };
+  }, [!!selectedType, showDuaaLibrary]);
   const [completedToday, setCompletedToday] = useState({
     morning: false,
     evening: false,
@@ -95,10 +107,24 @@ export function AthkarReader({ initialType }: AthkarReaderProps) {
   // Load incremental progress from localStorage
   useEffect(() => {
     if (selectedType && currentUserId) {
+      const today = new Date().toDateString();
       const key = `athkar_progress_${currentUserId}_${selectedType}`;
       const saved = localStorage.getItem(key);
       if (saved) {
-        setProgress(JSON.parse(saved));
+        try {
+          const parsed = JSON.parse(saved);
+          // Only load if the saved progress belongs to today
+          if (parsed && typeof parsed === 'object' && parsed.date === today) {
+            setProgress(parsed.data || {});
+          } else {
+            // Old format or different day - reset
+            setProgress({});
+            localStorage.removeItem(key);
+          }
+        } catch (e) {
+          setProgress({});
+          localStorage.removeItem(key);
+        }
       } else {
         setProgress({});
       }
@@ -108,8 +134,12 @@ export function AthkarReader({ initialType }: AthkarReaderProps) {
   // Save incremental progress to localStorage
   useEffect(() => {
     if (selectedType && currentUserId && Object.keys(progress).length > 0) {
+      const today = new Date().toDateString();
       const key = `athkar_progress_${currentUserId}_${selectedType}`;
-      localStorage.setItem(key, JSON.stringify(progress));
+      localStorage.setItem(key, JSON.stringify({
+        date: today,
+        data: progress
+      }));
     }
   }, [progress, selectedType, currentUserId]);
 
@@ -266,6 +296,8 @@ export function AthkarReader({ initialType }: AthkarReaderProps) {
         {athkarCards.map((item) => (
           <motion.div
             key={item.id}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
             whileHover={{ y: -3 }}
             onClick={() => fetchAthkar(item.id)}
             className="relative bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-white/5 flex flex-col min-h-[220px] cursor-pointer group overflow-hidden"
@@ -316,6 +348,41 @@ export function AthkarReader({ initialType }: AthkarReaderProps) {
             </div>
           </motion.div>
         ))}
+
+        {/* Duaa Library Card - Unified Size */}
+        <motion.div
+          whileHover={{ y: -3 }}
+          onClick={() => setShowDuaaLibrary(true)}
+          className="relative bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-white/5 flex flex-col min-h-[220px] cursor-pointer group overflow-hidden"
+        >
+          <div className="absolute inset-0 bg-teal-600/5 opacity-0 group-hover:opacity-100 transition-all duration-500 transform scale-[0.8] group-hover:scale-[1.1] blur-3xl" />
+
+          <div className="relative z-10 flex items-start justify-between mb-4">
+            <div className="w-12 h-12 rounded-xl bg-teal-600 text-white flex items-center justify-center shadow-lg shadow-teal-600/20 transition-transform group-hover:rotate-12 duration-500">
+              <Book className="w-6 h-6" />
+            </div>
+            <div className="px-3 py-1 rounded-full font-black text-[10px] bg-teal-50 text-teal-600 uppercase tracking-widest flex items-center gap-1.5">
+              مكتبة شاملة
+            </div>
+          </div>
+
+          <div className="relative z-10 flex-1 flex flex-col items-center justify-center text-center space-y-1 mb-6">
+            <h3 className="text-xl font-black text-slate-800 dark:text-white group-hover:scale-105 transition-transform">مكتبة الأدعية</h3>
+            <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 leading-relaxed max-w-[200px]">
+              أدعية مأثورة من القرآن والسنة، مصنفة بدقة لكل أحوالك.
+            </p>
+          </div>
+
+          <div className="relative z-10 flex items-center justify-between mt-auto">
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center shadow-lg bg-teal-600 text-white group-hover:scale-110 transition-all">
+              <Plus className="w-6 h-6 stroke-[3]" />
+            </div>
+            <div className="text-right">
+              <span className="text-[9px] font-black text-slate-300 dark:text-slate-600 uppercase tracking-widest block">استكشف</span>
+              <span className="text-[10px] font-black text-teal-600">تصفح الآن</span>
+            </div>
+          </div>
+        </motion.div>
       </div>
 
       {/* Prominent Israa and Miraj Card */}
@@ -557,6 +624,18 @@ export function AthkarReader({ initialType }: AthkarReaderProps) {
                   {isCompleted ? 'تم الإنجاز' : 'إخفاء'}
                 </button>
               </div>
+            </motion.div>
+          </div>
+        )}
+        {showDuaaLibrary && !selectedType && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9990] flex items-center justify-center p-0 lg:p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-[#fafaf9] dark:bg-[#0c0c0b] w-full h-full lg:h-[88vh] lg:max-w-xl lg:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col border border-white/5"
+            >
+              <DuaaLibrary onClose={() => setShowDuaaLibrary(false)} />
             </motion.div>
           </div>
         )}

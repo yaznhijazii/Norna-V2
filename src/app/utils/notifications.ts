@@ -141,20 +141,30 @@ class NotificationService {
       const context = this.audioContext;
 
       if (type === 'rose') {
-        // Soft, romantic chime for rose
         this.playRoseSound(context);
       } else if (type === 'heart') {
-        // Warm, loving tone for heart
         this.playHeartSound(context);
       } else if (type === 'message') {
-        // Quick, cheerful notification for message
         this.playMessageSound(context);
       } else {
-        // Default bell sound
         this.playDefaultSound(context);
       }
     } catch (error) {
       console.error('Error playing notification sound:', error);
+    }
+  }
+
+  /**
+   * Resume AudioContext on user interaction (Required for iOS)
+   */
+  async resumeAudioContext(): Promise<void> {
+    if (this.audioContext && (this.audioContext.state === 'suspended' || this.audioContext.state === 'interrupted')) {
+      try {
+        await this.audioContext.resume();
+        console.log('🔊 AudioContext resumed successfully');
+      } catch (err) {
+        console.error('❌ Failed to resume AudioContext:', err);
+      }
     }
   }
 

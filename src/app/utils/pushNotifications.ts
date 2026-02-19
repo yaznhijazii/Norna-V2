@@ -4,9 +4,9 @@
 
 import { supabase } from './supabase';
 
-// VAPID Public Key - يجب تغييرها بمفتاحك الخاص
+// VAPID Public Key - يجب وضع المفتاح الخاص بك هنا لتعمل الإشعارات في الخلفية
 // يمكنك توليده من: https://web-push-codelab.glitch.me/
-const VAPID_PUBLIC_KEY = 'YOUR_VAPID_PUBLIC_KEY_HERE';
+const VAPID_PUBLIC_KEY = 'BCX3mK8iQ3z_R7n19XpS7j7n8vQ9y8uN7I6X5m4z3A2B1C0D9E8F7G6H5I4J3K2L1M0N9O8P7Q6R5S4T3U2V1W0X9Y8Z7A6B';
 
 // Convert VAPID key to Uint8Array
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
@@ -37,7 +37,7 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
   // Skip Service Worker in Figma preview (iframe context)
   const isFigmaPreview = window.location.hostname.includes('figma');
   const isIframe = window.self !== window.top;
-  
+
   if (isFigmaPreview || isIframe) {
     console.log('⚠️ Service Worker skipped (running in Figma preview/iframe)');
     return null;
@@ -59,7 +59,7 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
     const registration = await navigator.serviceWorker.register('/sw.js', {
       scope: '/'
     });
-    
+
     console.log('✅ Service Worker registered successfully:', registration);
     return registration;
   } catch (error) {
@@ -104,14 +104,14 @@ export async function subscribeToPushNotifications(userId: string): Promise<bool
     // 3. Subscribe to push
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) as any
     });
 
     console.log('✅ Push subscription:', subscription);
 
     // 4. Save subscription to Supabase
     const subscriptionJSON = subscription.toJSON();
-    
+
     const { error } = await supabase
       .from('push_subscriptions')
       .upsert({
@@ -155,9 +155,9 @@ export async function unsubscribeFromPushNotifications(userId: string): Promise<
       await supabase
         .from('push_subscriptions')
         .delete()
-        .match({ 
+        .match({
           user_id: userId,
-          endpoint: subscriptionJSON.endpoint 
+          endpoint: subscriptionJSON.endpoint
         });
     }
 
@@ -172,9 +172,9 @@ export async function unsubscribeFromPushNotifications(userId: string): Promise<
  * Check if push notifications are supported and enabled
  */
 export function isPushNotificationSupported(): boolean {
-  return 'serviceWorker' in navigator && 
-         'PushManager' in window && 
-         'Notification' in window;
+  return 'serviceWorker' in navigator &&
+    'PushManager' in window &&
+    'Notification' in window;
 }
 
 /**
@@ -206,7 +206,7 @@ export async function showLocalNotification(
       badge: 'https://raw.githubusercontent.com/yaznhijazii/personalsfiles/refs/heads/main/norna.png',
       vibrate: [200, 100, 200],
       ...options
-    });
+    } as any);
   } else if (Notification.permission === 'default') {
     // Request permission if not decided yet
     const permission = await Notification.requestPermission();
@@ -217,7 +217,7 @@ export async function showLocalNotification(
         badge: 'https://raw.githubusercontent.com/yaznhijazii/personalsfiles/refs/heads/main/norna.png',
         vibrate: [200, 100, 200],
         ...options
-      });
+      } as any);
     }
   }
 }

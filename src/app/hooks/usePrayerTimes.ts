@@ -42,7 +42,8 @@ export function usePrayerTimes() {
             Fajr: adjustTime(t.Fajr, -14),
             Dhuhr: adjustTime(t.Dhuhr, 1),
             Asr: adjustTime(t.Asr, 2),
-            Isha: adjustTime(t.Isha, 9),
+            Maghrib: adjustTime(t.Maghrib, 6),
+            Isha: adjustTime(t.Isha, 15),
           };
           setPrayerTimes(adjustedTimings);
         }
@@ -53,8 +54,8 @@ export function usePrayerTimes() {
           Fajr: '05:15',
           Dhuhr: '12:30',
           Asr: '15:45',
-          Maghrib: '18:20',
-          Isha: '19:45',
+          Maghrib: '18:26',
+          Isha: '19:51',
         });
       }
     };

@@ -25,6 +25,14 @@ const moods = [
 
 const logoImage = "/norna.png";
 
+const toArabicDigits = (num: string | number) => {
+  const chars: any = {
+    '0': '٠', '1': '١', '2': '٢', '3': '٣', '4': '٤',
+    '5': '٥', '6': '٦', '7': '٧', '8': '٨', '9': '٩'
+  };
+  return String(num).replace(/[0-9]/g, (d) => chars[d]);
+}
+
 interface DailyHeaderProps {
   userName?: string;
   userId?: string;
@@ -526,7 +534,7 @@ export function DailyHeader({
                 default: return <Sun className={`${iconClass} text-amber-400`} />;
               }
             })()}
-            <span className="text-[9px] font-bold text-white/35 tracking-wide">{isRamadan ? `رمضان ${ramadanDay} · ${dayName}` : `${dayName} · ${day} ${month}`}</span>
+            <span className="text-[9px] font-bold text-white/35 tracking-wide">{isRamadan ? `رمضان ${toArabicDigits(ramadanDay || 1)} · ${dayName}` : `${dayName} · ${toArabicDigits(day)} ${month}`}</span>
           </div>
         </motion.div>
 
@@ -560,7 +568,7 @@ export function DailyHeader({
                   exit={{ opacity: 0, y: -5 }}
                   className="text-[11px] font-black text-white/70 tabular-nums tracking-wider font-mono"
                 >
-                  {formattedTime}
+                  {toArabicDigits(formattedTime)}
                 </motion.span>
               )}
             </AnimatePresence>
@@ -693,7 +701,7 @@ export function DailyHeader({
             )}
             <span className="text-white/40">{ramadanTarget}</span>
             <div className="w-px h-3 bg-white/10" />
-            <span className="font-mono text-white/90 tracking-tight text-[11px]">{ramadanCountdown}</span>
+            <span className="font-mono text-white/90 tracking-tight text-[11px]">{toArabicDigits(ramadanCountdown)}</span>
           </motion.div>
         )}
 
@@ -713,7 +721,7 @@ export function DailyHeader({
         {/* Stats mini badge */}
         <div className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-white/[0.05] border border-white/[0.05] text-[9px] font-bold text-white/25">
           <Check className="w-3 h-3" />
-          <span>{stats.totalCompleted}/{stats.totalTasks}</span>
+          <span>{toArabicDigits(stats.totalCompleted)}/{toArabicDigits(stats.totalTasks)}</span>
         </div>
       </motion.div>
     </div>

@@ -50,12 +50,11 @@ export function AudioCenter() {
 
     const wasPlaying = isPlaying;
     setSelectedRadioStation(prevStation as any);
-    setIsPlaying(false);
+
     if (radioAudioRef.current) {
+      setIsBuffering(true);
       radioAudioRef.current.src = prevStation.url;
-      radioAudioRef.current.load();
       if (wasPlaying) {
-        setIsBuffering(true);
         radioAudioRef.current.play();
       }
     }
@@ -68,12 +67,11 @@ export function AudioCenter() {
 
     const wasPlaying = isPlaying;
     setSelectedRadioStation(nextStation as any);
-    setIsPlaying(false);
+
     if (radioAudioRef.current) {
+      setIsBuffering(true);
       radioAudioRef.current.src = nextStation.url;
-      radioAudioRef.current.load();
       if (wasPlaying) {
-        setIsBuffering(true);
         radioAudioRef.current.play();
       }
     }
@@ -101,21 +99,45 @@ export function AudioCenter() {
     return normalizedName.includes(normalizedQuery) || surah.englishName.toLowerCase().includes(normalizedQuery);
   });
 
-  const togglePlay = () => {
-    const audio = activeTab === 'radio' ? radioAudioRef.current : quranAudioRef.current;
+  const isProcessingRef = useRef(false);
+
+  const togglePlay = async () => {
+    if (isProcessingRef.current) return;
+
+    const radio = radioAudioRef.current;
+    const quran = quranAudioRef.current;
+    const audio = activeTab === 'radio' ? radio : quran;
+    const inactive = activeTab === 'radio' ? quran : radio;
+
     if (!audio) return;
 
-    if (isPlaying) {
+    // 1. Instant Pause (No processing delay)
+    if (!audio.paused) {
       audio.pause();
-    } else {
+      return;
+    }
+
+    // 2. Start Playback Flow
+    isProcessingRef.current = true;
+
+    // Stop other audio sources
+    if (inactive && !inactive.paused) {
+      inactive.pause();
+    }
+
+    try {
       if (activeTab === 'radio') {
         setIsBuffering(true);
+        // Refresh live stream buffer
         audio.load();
       }
-      audio.play().catch(err => {
-        console.error('Error playing:', err);
-        setIsBuffering(false);
-      });
+
+      await audio.play();
+    } catch (err) {
+      console.error('Playback failed:', err);
+      setIsBuffering(false);
+    } finally {
+      isProcessingRef.current = false;
     }
   };
 
@@ -182,7 +204,16 @@ export function AudioCenter() {
           return (
             <button
               key={tab.id}
-              onClick={() => { setActiveTab(tab.id); setIsPlaying(false); }}
+              onClick={() => {
+                if (tab.id !== activeTab) {
+                  // Stop all audio when switching tabs to prevent "ghost" audio and state confusion
+                  if (radioAudioRef.current) radioAudioRef.current.pause();
+                  if (quranAudioRef.current) quranAudioRef.current.pause();
+                  setIsPlaying(false);
+                  setIsBuffering(false);
+                  setActiveTab(tab.id);
+                }
+              }}
               className={`relative flex-1 py-3 px-2 rounded-2xl text-[11px] font-black transition-all flex items-center justify-center gap-2 overflow-hidden
                 ${isActive
                   ? 'text-white shadow-lg'
@@ -326,7 +357,7 @@ export function AudioCenter() {
                       <div className="relative group/play flex-shrink-0">
                         <motion.button
                           onClick={togglePlay}
-                          whileTap={{ scale: 0.95 }}
+                          whileTap={{ scale: 0.92 }}
                           className={`w-24 h-24 sm:w-28 sm:h-28 rounded-full flex items-center justify-center transition-all duration-300 relative z-10 border-[10px] dark:border-[#1a1816] shadow-2xl
                             ${isPlaying
                               ? 'bg-[#1a1816] text-emerald-500 border-[#2a2723]'
@@ -334,12 +365,13 @@ export function AudioCenter() {
                             }
                           `}
                         >
-                          <AnimatePresence mode="wait">
+                          <AnimatePresence>
                             <motion.div
                               key={isBuffering ? 'buff' : isPlaying ? 'pause' : 'play'}
-                              initial={{ opacity: 0, scale: 0.8 }}
+                              initial={{ opacity: 0, scale: 0.5 }}
                               animate={{ opacity: 1, scale: 1 }}
-                              exit={{ opacity: 0, scale: 0.8 }}
+                              exit={{ opacity: 0, scale: 0.5 }}
+                              transition={{ duration: 0.15 }}
                               className="flex items-center justify-center"
                             >
                               {isBuffering ? (
@@ -379,7 +411,7 @@ export function AudioCenter() {
                         </div>
 
                         {/* Volume Gauge */}
-                        <div className="bg-black/40 rounded-2xl p-4 border border-white/[0.05] shadow-inner">
+                        <div className="bg-black/40 rounded-2xl p-4 border border-white/[0.05] shadow-inner" dir="ltr">
                           <div className="flex justify-between items-center mb-3 px-1">
                             <div className="flex items-center gap-2">
                               <Volume2 className="w-3.5 h-3.5 text-emerald-500/40" />
@@ -418,12 +450,13 @@ export function AudioCenter() {
                 <audio
                   ref={radioAudioRef}
                   src={selectedRadioStation.url}
-                  preload="none"
-                  onPlay={() => { setIsPlaying(true); setIsBuffering(false); }}
-                  onPause={() => { setIsPlaying(false); setIsBuffering(false); }}
+                  preload="metadata"
+                  onPlay={() => setIsPlaying(true)}
+                  onPause={() => setIsPlaying(false)}
                   onWaiting={() => setIsBuffering(true)}
                   onPlaying={() => setIsBuffering(false)}
-                  onCanPlay={() => { if (isPlaying) setIsBuffering(false); }}
+                  onCanPlay={() => setIsBuffering(false)}
+                  onEnded={() => setIsPlaying(false)}
                   onError={(e) => {
                     console.error('Radio Error:', e);
                     setIsPlaying(false);
@@ -588,7 +621,7 @@ export function AudioCenter() {
                     </div>
 
                     {/* Volume Bar: Vertical style? No, stay horizontal but premium */}
-                    <div className="w-full relative z-10">
+                    <div className="w-full relative z-10" dir="ltr">
                       <div className="bg-black/20 backdrop-blur-2xl rounded-3xl p-5 border border-white/5 shadow-inner">
                         <div className="flex items-center gap-5">
                           <button onClick={toggleMute} className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-white shadow-sm transition-all hover:bg-white/20 active:scale-95">
@@ -615,13 +648,15 @@ export function AudioCenter() {
                   </div>
                   <audio
                     ref={quranAudioRef}
-                    src={`https://cdn.islamic.network/quran/audio-surah/128/ar.alafasy/${selectedSurah.number}.mp3`}
-                    onPlay={() => { setIsPlaying(true); setIsBuffering(false); }}
-                    onPause={() => { setIsPlaying(false); setIsBuffering(false); }}
+                    src={selectedSurah ? `https://cdn.islamic.network/quran/audio-surah/128/ar.alafasy/${selectedSurah.number}.mp3` : ''}
+                    preload="metadata"
+                    onPlay={() => setIsPlaying(true)}
+                    onPause={() => setIsPlaying(false)}
                     onWaiting={() => setIsBuffering(true)}
                     onPlaying={() => setIsBuffering(false)}
                     onTimeUpdate={handleTimeUpdate}
                     onLoadedMetadata={handleTimeUpdate}
+                    onEnded={() => setIsPlaying(false)}
                   />
                 </>
               )}

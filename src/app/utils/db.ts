@@ -92,16 +92,14 @@ export async function getWeekPrayers(userId: string) {
 // =====================================================
 
 export async function getQuranProgress(userId: string, surah: string) {
-  const now = new Date();
-  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-
   const { data, error } = await supabase
     .from('quran_readings')
     .select('*')
     .eq('user_id', userId)
-    .eq('date', today)
-    .eq('surah_name', surah)  // Changed from 'surah' to 'surah_name'
-    .single();
+    .eq('surah_name', surah)
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
   if (error && error.code !== 'PGRST116') {
     console.error('Error fetching quran progress:', error);

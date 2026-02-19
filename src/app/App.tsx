@@ -28,6 +28,7 @@ import { usePushNotifications } from './hooks/usePushNotifications';
 import { useGiftNotifications } from './hooks/useGiftNotifications';
 import { useRamadan } from './hooks/useRamadan';
 import { motion } from 'motion/react';
+import { notificationService } from './utils/notifications';
 
 const logoImage = 'https://raw.githubusercontent.com/yaznhijazii/personalsfiles/refs/heads/main/norna.png';
 
@@ -95,16 +96,20 @@ export default function App() {
       }
     };
 
+    const handleHideNav = (e: any) => setHideNav(!!e.detail);
+
     window.addEventListener('openQuranSurah', handleOpenQuran);
     window.addEventListener('openQuranBookmark', handleOpenBookmark);
     window.addEventListener('openAthkar', handleOpenAthkar);
     window.addEventListener('partnerActivity', handlePartnerActivity);
+    window.addEventListener('hideBottomNav', handleHideNav);
 
     return () => {
       window.removeEventListener('openQuranSurah', handleOpenQuran);
       window.removeEventListener('openQuranBookmark', handleOpenBookmark);
       window.removeEventListener('openAthkar', handleOpenAthkar);
       window.removeEventListener('partnerActivity', handlePartnerActivity);
+      window.removeEventListener('hideBottomNav', handleHideNav);
     };
   }, []);
 
@@ -117,6 +122,7 @@ export default function App() {
   const [showSendGift, setShowSendGift] = useState(false);
   const [receivedGift, setReceivedGift] = useState<any>(null);
   const [partnerActivity, setPartnerActivity] = useState<{ partnerName: string; prayerName: string } | null>(null);
+  const [hideNav, setHideNav] = useState(false);
 
   // Data states
   const [activeChallenges, setActiveChallenges] = useState<UserChallengeData[]>([]);
@@ -426,6 +432,7 @@ export default function App() {
   return (
     <div
       data-ramadan={isRamadan}
+      onClick={() => notificationService.resumeAudioContext()}
       className={`min-h-screen relative overflow-hidden premium-bg-layout ${isRamadan ? 'ramadan-mode' : ''}`}
       style={{
         fontFamily: "'IBM Plex Sans Arabic', sans-serif",
@@ -553,11 +560,18 @@ export default function App() {
         )}
       </div>
 
-      <BottomNavigation
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        hasPartner={!!partnerId}
-      />
+      <motion.div
+        initial={false}
+        animate={{ y: hideNav ? 100 : 0, opacity: hideNav ? 0 : 1 }}
+        transition={{ duration: 0.3, ease: "easeInOut" }}
+        className="fixed bottom-0 left-0 right-0 z-[1000]"
+      >
+        <BottomNavigation
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          hasPartner={!!partnerId}
+        />
+      </motion.div>
     </div >
   );
 }

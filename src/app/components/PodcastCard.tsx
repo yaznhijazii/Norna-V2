@@ -144,19 +144,15 @@ export function PodcastCard() {
 
   const togglePlayPause = () => {
     if (audioRef.current) {
-      if (isAudioPlaying) {
+      if (!audioRef.current.paused) {
         audioRef.current.pause();
-        setIsAudioPlaying(false);
       } else {
         const playPromise = audioRef.current.play();
         if (playPromise !== undefined) {
-          playPromise
-            .then(() => {
-              setIsAudioPlaying(true);
-            })
-            .catch((error) => {
-              console.log('Playback prevented:', error);
-            });
+          playPromise.catch((error) => {
+            console.log('Playback prevented:', error);
+            setIsAudioPlaying(false);
+          });
         }
       }
     }
@@ -192,9 +188,12 @@ export function PodcastCard() {
   useEffect(() => {
     if (audioRef.current && playMode === 'audio' && isPlaying) {
       const audio = audioRef.current;
-      audio.load();
+      // Assigning src automatically triggers a load
+      const nextSrc = podcast.audioParts[currentPartIndex];
+      if (audio.src !== nextSrc) {
+        audio.src = nextSrc;
+      }
 
-      // Wait for audio to be ready before playing
       const playPromise = audio.play();
       if (playPromise !== undefined) {
         playPromise
@@ -414,6 +413,16 @@ export function PodcastCard() {
                         controls
                         className="w-full"
                         src={podcast.audioParts[currentPartIndex]}
+                        preload="metadata"
+                        onPlay={() => setIsAudioPlaying(true)}
+                        onPause={() => setIsAudioPlaying(false)}
+                        onEnded={() => {
+                          if (currentPartIndex < podcast.audioParts.length - 1) {
+                            setCurrentPartIndex(currentPartIndex + 1);
+                          } else {
+                            setIsAudioPlaying(false);
+                          }
+                        }}
                         onError={() => {
                           console.error('❌ فشل تحميل الجزء', currentPartIndex + 1);
                           console.error('🔗 الرابط:', podcast.audioParts[currentPartIndex]);
