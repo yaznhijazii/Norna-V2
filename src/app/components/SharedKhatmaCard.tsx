@@ -10,10 +10,11 @@ interface SharedKhatmaCardProps {
     partner: any | null;
     activeKhatma: any | null; // Shared Khatma Object
     onStartKhatma: () => void;
+    onContinue: () => void;
     onRefresh: () => void;
 }
 
-export function SharedKhatmaCard({ currentUserId, partner, activeKhatma, onStartKhatma, onRefresh }: SharedKhatmaCardProps) {
+export function SharedKhatmaCard({ currentUserId, partner, activeKhatma, onStartKhatma, onContinue, onRefresh }: SharedKhatmaCardProps) {
     const [loading, setLoading] = useState(false);
 
     const handleDelete = async () => {
@@ -116,7 +117,10 @@ export function SharedKhatmaCard({ currentUserId, partner, activeKhatma, onStart
             </div>
 
             {/* Partner Info Row */}
-            <div className="flex items-center gap-4 mb-6 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-3xl border border-dashed border-slate-200 dark:border-white/5">
+            <div
+                onClick={onContinue}
+                className="flex items-center gap-4 mb-6 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-3xl border border-dashed border-slate-200 dark:border-white/5 cursor-pointer hover:bg-emerald-50/50 dark:hover:bg-emerald-500/5 transition-colors group"
+            >
                 <div className="w-12 h-12 rounded-2xl bg-indigo-100 flex items-center justify-center overflow-hidden border-2 border-white dark:border-slate-700 shadow-sm shrink-0">
                     {partner?.avatar_url ? (
                         <img src={partner.avatar_url} alt={partner.name} className="w-full h-full object-cover" />
@@ -128,9 +132,8 @@ export function SharedKhatmaCard({ currentUserId, partner, activeKhatma, onStart
                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">آخر قراءة</div>
                     <div className="flex items-center justify-between">
                         <h4 className="font-bold text-slate-800 dark:text-white text-base">وصلت عند الصفحة {activeKhatma.current_page?.toLocaleString('ar-EG') || '١'}</h4>
-                        <div className="flex items-center gap-1 bg-emerald-100 dark:bg-emerald-900/30 px-2 py-0.5 rounded-lg">
-                            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                            <span className="text-[9px] font-black text-emerald-700 dark:text-emerald-400">محدّث</span>
+                        <div className="flex items-center gap-1 bg-emerald-100 dark:bg-emerald-900/30 px-2 py-0.5 rounded-lg group-hover:bg-emerald-500 group-hover:text-white transition-colors">
+                            <span className="text-[9px] font-black">تابع الآن</span>
                         </div>
                     </div>
                 </div>

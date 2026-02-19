@@ -554,8 +554,10 @@ export async function saveQuranBookmark(userId: string, surahNum: number, surahN
       surah_number: surahNum,
       surah_name: surahName,
       ayah_number: ayahNum,
-      page_number: pageNum,
+      page_number: pageNum || 1,
       updated_at: new Date().toISOString()
+    }, {
+      onConflict: 'user_id'
     });
 
   if (error) console.error('Error saving bookmark:', error);
@@ -567,9 +569,11 @@ export async function getQuranBookmark(userId: string) {
     .from('quran_bookmarks')
     .select('*')
     .eq('user_id', userId)
-    .single();
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
-  if (error && error.code !== 'PGRST116') {
+  if (error) {
     console.error('Error getting bookmark:', error);
     return null;
   }
@@ -583,9 +587,14 @@ export async function getActiveKhatma(userId: string) {
     .eq('user_id', userId)
     .eq('status', 'active')
     .eq('is_current', true)
-    .single();
+    .order('start_date', { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
-  if (error && error.code !== 'PGRST116') return null;
+  if (error) {
+    console.error('Error getting active khatma:', error);
+    return null;
+  }
   return data;
 }
 

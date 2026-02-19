@@ -253,14 +253,15 @@ export function DailyHeader({
           getTodayQuranProgress(userId),
         ]);
 
-        // Count completed prayers (include taraweeh in Ramadan)
+        // Count completed prayers (include Duha + Witr)
         const prayersCompleted = prayers
           ? (prayers.fajr ? 1 : 0) +
           (prayers.dhuhr ? 1 : 0) +
           (prayers.asr ? 1 : 0) +
           (prayers.maghrib ? 1 : 0) +
           (prayers.isha ? 1 : 0) +
-          (isRamadan && prayers.taraweeh ? 1 : 0)
+          (prayers.duha ? 1 : 0) +
+          (prayers.witr ? 1 : 0)
           : 0;
 
         // Count completed athkar
@@ -275,10 +276,10 @@ export function DailyHeader({
 
         // Check if today is Friday for Kahf availability
         const isFriday = new Date().getDay() === 5;
-        // Base: mulk (1) + kahf on Friday (1) + 20 pages in Ramadan (1)
-        const maxQuranTasks = (isFriday ? 2 : 1) + (isRamadan ? 1 : 0);
-        // Prayers: 5 + taraweeh in Ramadan
-        const maxPrayers = 5 + (isRamadan ? 1 : 0);
+        // Base: mulk (1) + kahf on Friday (1) (Ramadan extra pages removed from stat)
+        const maxQuranTasks = isFriday ? 2 : 1;
+        // Prayers: 5 + 2 (Duha/Witr) (Taraweeh removed from stat)
+        const maxPrayers = 7;
 
         const total =
           prayersCompleted + athkarCompleted + quranCompleted;

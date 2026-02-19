@@ -68,9 +68,12 @@ interface SurahData {
 }
 
 interface UserBookmark {
+    user_id?: string;
     surah_number: number;
     surah_name: string;
     ayah_number: number;
+    page_number?: number;
+    updated_at?: string;
 }
 
 interface Khatma {
@@ -90,10 +93,11 @@ export const toArabicDigits = (num: number | string) => {
 
 interface QuranViewerProps {
     jumpToBookmark?: boolean;
+    initialSurah?: { number: number; name: string; englishName: string; numberOfAyahs: number } | null;
     onJumped?: () => void;
 }
 
-export function QuranViewer({ jumpToBookmark, onJumped }: QuranViewerProps) {
+export function QuranViewer({ jumpToBookmark, initialSurah, onJumped }: QuranViewerProps) {
     const [surahs, setSurahs] = useState<Surah[]>([]);
     const [selectedSurah, setSelectedSurah] = useState<Surah | null>(null);
 
@@ -109,6 +113,9 @@ export function QuranViewer({ jumpToBookmark, onJumped }: QuranViewerProps) {
     const [clickTimeout, setClickTimeout] = useState<NodeJS.Timeout | null>(null);
     const [selectedReciter, setSelectedReciter] = useState('ar.alafasy');
     const [isReciterMenuOpen, setIsReciterMenuOpen] = useState(false);
+    const [isInitialized, setIsInitialized] = useState(false);
+    const [isLoadingData, setIsLoadingData] = useState(true);
+    const [isReadyToSave, setIsReadyToSave] = useState(false);
 
     // Settings State
     const [showSettings, setShowSettings] = useState(false);
@@ -191,6 +198,12 @@ export function QuranViewer({ jumpToBookmark, onJumped }: QuranViewerProps) {
     const [showPlayerControls, setShowPlayerControls] = useState(true);
     const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+    const resetControlsTimeout = () => {
+        if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+        setShowPlayerControls(true);
+        controlsTimeoutRef.current = setTimeout(() => setShowPlayerControls(false), 3000);
+    };
+
     // Swipe State
     const touchStartRef = useRef<number | null>(null);
     const touchEndRef = useRef<number | null>(null);
@@ -251,25 +264,127 @@ export function QuranViewer({ jumpToBookmark, onJumped }: QuranViewerProps) {
         if (user) {
             const userData = JSON.parse(user);
             setCurrentUserId(userData.id);
-            loadUserProgress(userData.id);
+            loadUserProgress(userData.id).finally(() => {
+                setIsLoadingData(false);
+                // If there's NO initial Surah and NO jump, we are initialized on the list
+                if (!initialSurah && !jumpToBookmark) {
+                    setIsInitialized(true);
+                }
+            });
         }
         fetchSurahs();
     }, []);
 
     const loadUserProgress = async (userId: string) => {
-        const bookmark = await getQuranBookmark(userId);
-        if (bookmark) setUserBookmark(bookmark);
+        console.log('🔄 Loading user progress for:', userId);
+        let bookmark = await getQuranBookmark(userId);
+
+        if (bookmark) {
+            console.log('✅ Found bookmark:', bookmark.surah_name, 'Page', bookmark.page_number);
+            // Smart Data Recovery: If page_number is missing, fetch it and update the DB
+            if (!bookmark.page_number) {
+                try {
+                    const response = await fetch(`https://api.alquran.cloud/v1/ayah/${bookmark.surah_number}:${bookmark.ayah_number}/quran-uthmani`);
+                    const data = await response.json();
+                    if (data.data) {
+                        bookmark.page_number = data.data.page;
+                        await saveQuranBookmark(userId, bookmark.surah_number, bookmark.surah_name, bookmark.ayah_number, bookmark.page_number);
+                    }
+                } catch (e) {
+                    console.error("Failed to recover page number for bookmark", e);
+                }
+            }
+            setUserBookmark(bookmark);
+
+            // Backup to LocalStorage
+            localStorage.setItem(`quran_bookmark_${userId}`, JSON.stringify(bookmark));
+        } else {
+            // Check LocalStorage Fallback
+            const local = localStorage.getItem(`quran_bookmark_${userId}`);
+            if (local) {
+                const localBookmark = JSON.parse(local);
+                console.log('📦 Found localStorage bookmark fallback:', localBookmark.surah_name);
+                setUserBookmark(localBookmark);
+            }
+        }
 
         const khatma = await getActiveKhatma(userId);
-        setActiveKhatma(khatma);
+        if (khatma) {
+            // Do the same for Khatma if missing page
+            if (!khatma.current_page) {
+                try {
+                    const response = await fetch(`https://api.alquran.cloud/v1/ayah/${khatma.current_surah}:${khatma.current_ayah}/quran-uthmani`);
+                    const data = await response.json();
+                    if (data.data) {
+                        khatma.current_page = data.data.page;
+                        await updateKhatmaProgress(khatma.id, khatma.current_surah, khatma.current_ayah, khatma.current_page);
+                    }
+                } catch (e) { }
+            }
+            console.log('✅ Found active khatma progress: Page', khatma.current_page);
+            setActiveKhatma(khatma);
 
+            // Backup Khatma to LocalStorage
+            localStorage.setItem(`quran_khatma_${userId}`, JSON.stringify(khatma));
+        } else {
+            // Check LocalStorage Fallback for Khatma
+            const localKhatma = localStorage.getItem(`quran_khatma_${userId}`);
+            if (localKhatma) {
+                const parsed = JSON.parse(localKhatma);
+                console.log('📦 Found localStorage khatma fallback:', parsed.current_page);
+                setActiveKhatma(parsed);
+            }
+        }
 
         const p = await getPartner(userId);
-        setPartner(p);
+        if (p) setPartner(p);
 
         const sk = await getActiveSharedKhatma(userId);
-        setSharedKhatma(sk);
+        if (sk) {
+            console.log('✅ Found shared khatma');
+            setSharedKhatma(sk);
+        }
     };
+
+    // Auto-Save progress on page change
+    useEffect(() => {
+        if (!isLoadingData && isInitialized && isReadyToSave && currentPage && currentUserId && selectedSurah && surahData) {
+            const firstAyah = surahData.ayahs[0];
+            if (firstAyah && !isNaN(currentPage)) {
+                console.log('📝 Auto-saving Quran progress...', { surah: selectedSurah.name, page: currentPage });
+                // Update Bookmark (Silently)
+                saveQuranBookmark(currentUserId, selectedSurah.number, selectedSurah.name, firstAyah.numberInSurah, currentPage);
+
+                // Backup to LocalStorage
+                localStorage.setItem(`quran_bookmark_${currentUserId}`, JSON.stringify({
+                    surah_number: selectedSurah.number,
+                    surah_name: selectedSurah.name,
+                    ayah_number: firstAyah.numberInSurah,
+                    page_number: currentPage,
+                    updated_at: new Date().toISOString()
+                }));
+
+                // Update Khatma (Silently)
+                if (activeKhatma) {
+                    updateKhatmaProgress(activeKhatma.id, selectedSurah.number, firstAyah.numberInSurah, currentPage);
+                }
+
+                // Update local state without toast
+                if (activeKhatma) {
+                    const updatedKhatma = { ...activeKhatma, current_surah: selectedSurah.number, current_ayah: firstAyah.numberInSurah, current_page: currentPage };
+                    setActiveKhatma(updatedKhatma);
+                    localStorage.setItem(`quran_khatma_${currentUserId}`, JSON.stringify(updatedKhatma));
+                }
+                setUserBookmark(prev => ({
+                    ...(prev || {}),
+                    surah_number: selectedSurah.number,
+                    ayah_number: firstAyah.numberInSurah,
+                    page_number: currentPage,
+                    surah_name: selectedSurah.name
+                }) as UserBookmark);
+            }
+        }
+    }, [currentPage, !!surahData, isInitialized]);
 
     const createKhatma = async () => {
         if (!currentUserId) return;
@@ -366,28 +481,55 @@ export function QuranViewer({ jumpToBookmark, onJumped }: QuranViewerProps) {
 
     const handleSurahSelect = (surah: Surah) => {
         setSelectedSurah(surah);
-        const startPage = SURAH_START_PAGES[surah.number - 1];
-        setCurrentPage(startPage);
+
+        // Smart Resume: If this is the surah the user was previously reading, resume from their page
+        if (userBookmark && userBookmark.surah_number === surah.number && userBookmark.page_number) {
+            setCurrentPage(userBookmark.page_number);
+        } else {
+            const startPage = SURAH_START_PAGES[surah.number - 1];
+            setCurrentPage(startPage);
+        }
+
+        setIsInitialized(true);
+        // We do NOT set isReadyToSave here to avoid immediate overwrite.
+        // It will be set when the user actually changes pages or confirms position.
+        setTimeout(() => setIsReadyToSave(true), 1000); // Allow safe delay
     };
 
     const handleContinueReading = async () => {
-        if (userBookmark && surahs.length > 0) {
-            const targetSurah = surahs.find(s => s.number === userBookmark.surah_number);
+        // Prefer UserBookmark, fallback to ActiveKhatma
+        const target = userBookmark || (activeKhatma ? {
+            surah_number: activeKhatma.current_surah,
+            surah_name: surahs.find(s => s.number === activeKhatma.current_surah)?.name || '',
+            ayah_number: activeKhatma.current_ayah,
+            page_number: activeKhatma.current_page
+        } : null);
+
+        if (target && surahs.length > 0) {
+            const targetSurah = surahs.find(s => s.number === target.surah_number);
             if (targetSurah) setSelectedSurah(targetSurah);
 
             setLoadingAyahs(true);
             try {
-                const response = await fetch(`https://api.alquran.cloud/v1/ayah/${userBookmark.surah_number}:${userBookmark.ayah_number}/quran-uthmani`);
+                const response = await fetch(`https://api.alquran.cloud/v1/ayah/${target.surah_number}:${target.ayah_number}/quran-uthmani`);
                 const data = await response.json();
                 if (data.data) {
-                    setCurrentPage(data.data.page);
+                    const page = data.data.page;
+                    setCurrentPage(page);
+
+                    // Smart Fix: If missing page_number, update it now
+                    if (!target.page_number && userBookmark) {
+                        await saveQuranBookmark(currentUserId, target.surah_number, target.surah_name, target.ayah_number, page);
+                        setUserBookmark({ ...userBookmark, page_number: page });
+                    }
+                    setIsInitialized(true);
                 }
             } catch (error) {
                 console.error('Error jumping to bookmark:', error);
-                const targetSurah = surahs.find(s => s.number === userBookmark.surah_number);
-                if (targetSurah) {
-                    setCurrentPage(SURAH_START_PAGES[targetSurah.number - 1]);
-                }
+                const startPage = SURAH_START_PAGES[target.surah_number - 1] || 1;
+                setCurrentPage(startPage);
+                setIsInitialized(true);
+                setTimeout(() => setIsReadyToSave(true), 1000);
             } finally {
                 setLoadingAyahs(false);
             }
@@ -395,11 +537,21 @@ export function QuranViewer({ jumpToBookmark, onJumped }: QuranViewerProps) {
     };
 
     useEffect(() => {
-        if (jumpToBookmark && surahs.length > 0 && userBookmark) {
+        if (!isLoadingData && jumpToBookmark && surahs.length > 0 && userBookmark) {
             handleContinueReading();
             onJumped?.();
         }
-    }, [jumpToBookmark, surahs, userBookmark]);
+    }, [isLoadingData, jumpToBookmark, surahs, !!userBookmark]);
+
+    useEffect(() => {
+        if (!isLoadingData && initialSurah && surahs.length > 0) {
+            const s = surahs.find(surah => surah.number === initialSurah.number);
+            if (s) {
+                handleSurahSelect(s);
+                onJumped?.();
+            }
+        }
+    }, [isLoadingData, initialSurah, surahs]);
 
     const getTotalPages = () => {
         return TOTAL_PAGES_QURAN;
@@ -473,6 +625,8 @@ export function QuranViewer({ jumpToBookmark, onJumped }: QuranViewerProps) {
     const handleAyahClick = (ayah: Ayah) => {
         // Prevent click action if it was a long press
         if (isLongPressRef.current) return;
+
+        resetControlsTimeout(); // Show UI on click
 
         if (isHifzMode) {
             // In Hifz Mode, click toggles visibility
@@ -565,13 +719,24 @@ export function QuranViewer({ jumpToBookmark, onJumped }: QuranViewerProps) {
 
     const handleBookmark = async (ayah: Ayah) => {
         if (!currentUserId || !selectedSurah) return;
-        await saveQuranBookmark(currentUserId, selectedSurah.number, selectedSurah.name, ayah.numberInSurah);
-        setUserBookmark({ surah_number: selectedSurah.number, surah_name: selectedSurah.name, ayah_number: ayah.numberInSurah });
+        setIsInitialized(true); // Manually saving means we are active and initialized
+        await saveQuranBookmark(currentUserId, selectedSurah.number, selectedSurah.name, ayah.numberInSurah, currentPage);
+        const newBookmark = {
+            surah_number: selectedSurah.number,
+            surah_name: selectedSurah.name,
+            ayah_number: ayah.numberInSurah,
+            page_number: currentPage,
+            updated_at: new Date().toISOString()
+        };
+        setUserBookmark(newBookmark);
+        localStorage.setItem(`quran_bookmark_${currentUserId}`, JSON.stringify(newBookmark));
 
         // Update Individual Khatma
         if (activeKhatma) {
             await updateKhatmaProgress(activeKhatma.id, selectedSurah.number, ayah.numberInSurah, currentPage);
-            setActiveKhatma({ ...activeKhatma, current_surah: selectedSurah.number, current_ayah: ayah.numberInSurah, current_page: currentPage });
+            const updatedKhatma = { ...activeKhatma, current_surah: selectedSurah.number, current_ayah: ayah.numberInSurah, current_page: currentPage };
+            setActiveKhatma(updatedKhatma);
+            localStorage.setItem(`quran_khatma_${currentUserId}`, JSON.stringify(updatedKhatma));
         }
 
         // Update Shared Khatma
@@ -588,8 +753,8 @@ export function QuranViewer({ jumpToBookmark, onJumped }: QuranViewerProps) {
     const getKhatmaStatus = () => {
         if (!activeKhatma) return null;
 
-        // 1. Calculate Actual Page based on Surah
-        const currentGlobalPage = activeKhatma.current_page || SURAH_START_PAGES[activeKhatma.current_surah - 1] || 1;
+        // 1. Calculate Actual Page based on Surah (Prefer UserBookmark if available for accuracy)
+        const currentGlobalPage = userBookmark?.page_number || activeKhatma.current_page || SURAH_START_PAGES[activeKhatma.current_surah - 1] || 1;
 
         // 2. Calculate Expected Page based on Time
         const start = new Date(activeKhatma.start_date).getTime();
@@ -634,8 +799,12 @@ export function QuranViewer({ jumpToBookmark, onJumped }: QuranViewerProps) {
 
     const getKhatmaPercentage = () => {
         if (!activeKhatma) return 0;
-        const currentGlobalPage = activeKhatma.current_page || SURAH_START_PAGES[activeKhatma.current_surah - 1] || 1;
-        return Math.round((currentGlobalPage / TOTAL_PAGES_QURAN) * 100);
+        // Prefer UserBookmark if available for accuracy
+        const currentGlobalPage = userBookmark?.page_number || activeKhatma.current_page || SURAH_START_PAGES[activeKhatma.current_surah - 1] || 1;
+
+        // Ensure percentage is at least 1% if they started reading (page > 1)
+        const percentage = Math.round((currentGlobalPage / TOTAL_PAGES_QURAN) * 100);
+        return (percentage === 0 && currentGlobalPage > 5) ? 1 : percentage;
     };
 
     const getDaysLeft = () => {
@@ -698,15 +867,7 @@ export function QuranViewer({ jumpToBookmark, onJumped }: QuranViewerProps) {
         s.number.toString() === searchQuery
     );
 
-    const resetControlsTimeout = () => {
-        setShowPlayerControls(true);
-        if (controlsTimeoutRef.current) {
-            clearTimeout(controlsTimeoutRef.current);
-        }
-        controlsTimeoutRef.current = setTimeout(() => {
-            setShowPlayerControls(false);
-        }, 3000);
-    };
+
 
     useEffect(() => {
         if (currentAyahPlaying) {
@@ -819,7 +980,7 @@ export function QuranViewer({ jumpToBookmark, onJumped }: QuranViewerProps) {
                                             {/* Surah Info - Adjusted to be centered vertically within the card */}
                                             <div className="flex-1 flex flex-col justify-center pb-2">
                                                 <h3 className="text-[42px] font-amiri font-bold mb-1 leading-tight">{userBookmark.surah_name}</h3>
-                                                <p className="text-emerald-100/70 font-bold text-sm opacity-90">الصفحة {userBookmark.surah_number?.toLocaleString('ar-EG') || '١'} • الآية {toArabicDigits(userBookmark.ayah_number)}</p>
+                                                <p className="text-emerald-100/70 font-bold text-sm opacity-90">الصفحة {toArabicDigits(userBookmark.page_number || SURAH_START_PAGES[userBookmark.surah_number - 1] || 1)} • الآية {toArabicDigits(userBookmark.ayah_number)}</p>
                                             </div>
                                         </div>
                                     </div>
@@ -839,6 +1000,7 @@ export function QuranViewer({ jumpToBookmark, onJumped }: QuranViewerProps) {
                                         partner={partner}
                                         activeKhatma={sharedKhatma}
                                         onStartKhatma={handleCreateSharedKhatma}
+                                        onContinue={handleContinueReading}
                                         onRefresh={() => loadUserProgress(currentUserId)}
                                     />
                                 ) : (
@@ -866,11 +1028,14 @@ export function QuranViewer({ jumpToBookmark, onJumped }: QuranViewerProps) {
                                                 </div>
 
                                                 {/* Last Read Row */}
-                                                <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-3xl mb-6 border border-dashed border-slate-200 dark:border-white/5">
+                                                <div
+                                                    onClick={handleContinueReading}
+                                                    className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-3xl mb-6 border border-dashed border-slate-200 dark:border-white/5 cursor-pointer hover:bg-emerald-50/50 dark:hover:bg-emerald-500/5 transition-colors group"
+                                                >
                                                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">آخر إنجاز لك</div>
                                                     <div className="flex items-center justify-between">
-                                                        <div className="text-base font-bold text-slate-800 dark:text-white">وصلت ص {toArabicDigits(activeKhatma.current_page || 1)}</div>
-                                                        <span className="text-[10px] bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 px-2 py-0.5 rounded-lg font-black">جاهز للمتابعة</span>
+                                                        <div className="text-base font-bold text-slate-800 dark:text-white">وصلت ص {toArabicDigits(userBookmark?.page_number || activeKhatma.current_page || 1)}</div>
+                                                        <span className="text-[10px] bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 px-2 py-0.5 rounded-lg font-black group-hover:bg-emerald-500 group-hover:text-white transition-colors">متابعة الآن</span>
                                                     </div>
                                                 </div>
 
@@ -894,10 +1059,14 @@ export function QuranViewer({ jumpToBookmark, onJumped }: QuranViewerProps) {
                                                 </div>
 
                                                 <div className="flex gap-2 mt-6">
-                                                    <button onClick={() => setShowKhatmaModal(true)} className="flex-1 py-3 text-xs font-bold text-slate-400 hover:text-emerald-600 transition-colors bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-white/5">تعديل الخطة</button>
-                                                    <button onClick={handleDeleteKhatma} className="px-4 py-3 text-xs font-bold text-red-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors rounded-2xl flex items-center justify-center">
-                                                        <Trash2 className="w-4 h-4" />
+                                                    <button
+                                                        onClick={handleContinueReading}
+                                                        className="flex-[2] py-4 bg-emerald-600 text-white rounded-2xl font-black text-sm shadow-lg shadow-emerald-500/20 hover:scale-[1.02] transition-transform flex items-center justify-center gap-2"
+                                                    >
+                                                        <Play className="w-4 h-4 fill-current" />
+                                                        <span>تابع التلاوة</span>
                                                     </button>
+                                                    <button onClick={() => setShowKhatmaModal(true)} className="flex-1 py-4 text-xs font-bold text-slate-400 hover:text-emerald-600 transition-colors bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-white/5">الخطة</button>
                                                 </div>
                                             </>
                                         ) : (
@@ -908,6 +1077,7 @@ export function QuranViewer({ jumpToBookmark, onJumped }: QuranViewerProps) {
                                                     partner={partner}
                                                     activeKhatma={null} // Empty state
                                                     onStartKhatma={handleCreateSharedKhatma}
+                                                    onContinue={handleContinueReading}
                                                     onRefresh={() => loadUserProgress(currentUserId)}
                                                 />
                                             ) : (
@@ -1034,6 +1204,8 @@ export function QuranViewer({ jumpToBookmark, onJumped }: QuranViewerProps) {
                         </div>
 
 
+
+
                         {activeTab === 'surah' ? (
                             loading ? (
                                 <div className="flex flex-col items-center justify-center py-20 gap-4">
@@ -1107,13 +1279,14 @@ export function QuranViewer({ jumpToBookmark, onJumped }: QuranViewerProps) {
                         key="reader"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        className={`fixed inset-0 ${currentTheme.bg} ${currentTheme.darkBg} flex flex-col h-full overflow-hidden transition-colors duration-500 ${showPlayerControls ? 'z-[200]' : 'z-[5000]'}`}
-                        onTouchStart={onTouchStart}
+                        className={`fixed inset-0 ${currentTheme.bg} ${currentTheme.darkBg} flex flex-col h-full overflow-hidden transition-colors duration-500 z-[5000]`}
+                        onClick={resetControlsTimeout}
+                        onTouchStart={(e) => { resetControlsTimeout(); onTouchStart(e); }}
                         onTouchMove={onTouchMove}
                         onTouchEnd={onTouchEnd}
                     >
                         {/* Header */}
-                        <div className={`${currentTheme.bg} ${currentTheme.darkBg} shrink-0 px-4 py-3 flex items-center justify-between border-b ${currentTheme.border} dark:border-white/5 relative z-10 transition-transform duration-300 ${showPlayerControls ? 'translate-y-0' : '-translate-y-full'}`}>
+                        <div className={`${currentTheme.bg} ${currentTheme.darkBg} shrink-0 px-4 py-3 flex items-center justify-between border-b ${currentTheme.border} dark:border-white/5 relative z-[6000] transition-transform duration-300 ${showPlayerControls ? 'translate-y-0' : '-translate-y-[110%]'}`}>
                             <button
                                 onClick={() => setSelectedSurah(null)}
                                 className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/10 text-slate-500 transition-colors"
